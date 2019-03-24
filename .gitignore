@@ -13,3 +13,6 @@
 
 # IDEA
 .idea/
+
+# Output
+Binaries/

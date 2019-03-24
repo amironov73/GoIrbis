@@ -1,0 +1,14 @@
+version: 0.0.1.{build}
+platform: x64
+image: Visual Studio 2017
+
+init:
+  - git config --global core.autocrlf true
+
+build_script:
+  - compile.cmd
+
+artifacts:
+  - path: Binaries
+    name: Binaries
+
