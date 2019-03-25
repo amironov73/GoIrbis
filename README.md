@@ -2,7 +2,7 @@
 
 ManagedIrbis ported to Go language
 
-Currently supported Go 1.11 on 64-bit Windows
+Currently supported Go 1.12 on 64-bit Windows
 
 ### Build status
 

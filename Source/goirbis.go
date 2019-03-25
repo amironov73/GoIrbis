@@ -1,14 +1,50 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"golang.org/x/text/encoding/charmap"
+	"io/ioutil"
 	"math/rand"
+	"net"
 	"strconv"
 	"strings"
 	"unicode"
 )
 
 const IrbisDelimiter = "\x1F\x1E"
+
+func contains(s []int, item int) bool {
+	for _, one := range s {
+		if one == item {
+			return true
+		}
+	}
+
+	return false
+}
+
+func toWin1251(text string) []byte {
+	encoder := charmap.Windows1251.NewEncoder()
+	result, _ := encoder.Bytes([]byte(text))
+	return result
+}
+
+func fromWin1251(buffer []byte) string {
+	decoder := charmap.Windows1251.NewDecoder()
+	temp, _ := decoder.Bytes(buffer)
+	result := string(temp)
+	return result
+}
+
+func toUtf8(text string) []byte {
+	result := []byte(text)
+	return result
+}
+
+func fromUtf8(buffer []byte) string {
+	return string(buffer)
+}
 
 func IrbisToDos(text string) string {
 	return strings.ReplaceAll(text, IrbisDelimiter, "\n")
@@ -82,7 +118,21 @@ func (field *RecordField) Clear() *RecordField {
 }
 
 func (field *RecordField) Decode(text string) {
-	// TODO implement
+	parts := strings.SplitN(text, "#", 2)
+	field.Tag, _ = strconv.Atoi(parts[0])
+	body := parts[1]
+	all := strings.Split(body, "^")
+	if body[0] != '^' {
+		field.Value = all[0]
+		all = all[1:]
+	}
+	for _, one := range all {
+		if len(one) != 0 {
+			subfield := SubField{}
+			subfield.Decode(one)
+			field.Subfields = append(field.Subfields, subfield)
+		}
+	}
 }
 
 func (field *RecordField) Encode() string {
@@ -147,11 +197,12 @@ func (record *MarcRecord) Decode(lines []string) {
 	secondLine := strings.Split(lines[1], "#")
 	record.Version, _ = strconv.Atoi(secondLine[1])
 	length := len(lines)
-	for i := 0; i < length; i++ {
+	for i := 2; i < length; i++ {
 		line := lines[i]
 		if len(line) != 0 {
 			field := RecordField{}
 			field.Decode(line)
+			record.Fields = append(record.Fields, field)
 		}
 	}
 }
@@ -272,7 +323,7 @@ type SearchParameters struct {
 }
 
 func NewSearchParameters() *SearchParameters {
-	return &SearchParameters {
+	return &SearchParameters{
 		FirstRecord: 1,
 	}
 }
@@ -280,11 +331,12 @@ func NewSearchParameters() *SearchParameters {
 //=========================================================
 
 type ClientQuery struct {
-	Dummy int
+	buffer *bytes.Buffer
 }
 
 func NewClientQuery(connection *IrbisConnection, command string) *ClientQuery {
 	result := ClientQuery{}
+	result.buffer = bytes.NewBuffer(nil)
 	result.AddAnsi(command).NewLine()
 	result.AddAnsi(connection.Workstation).NewLine()
 	result.AddAnsi(command).NewLine()
@@ -303,52 +355,112 @@ func (query *ClientQuery) Add(value int) *ClientQuery {
 }
 
 func (query *ClientQuery) AddAnsi(text string) *ClientQuery {
-	// TODO implement
+	buf := toWin1251(text)
+	query.buffer.Write(buf)
 	return query
 }
 
 func (query *ClientQuery) AddUtf(text string) *ClientQuery {
-	// TODO implement
+	buf := toUtf8(text)
+	query.buffer.Write(buf)
 	return query
 }
 
+func (query *ClientQuery) Encode() []byte {
+	result := bytes.NewBuffer(nil)
+	length := query.buffer.Len()
+	prefix := strconv.Itoa(length) + "\n"
+	result.WriteString(prefix)
+	result.Write(query.buffer.Bytes())
+
+	return result.Bytes()
+}
+
 func (query *ClientQuery) NewLine() *ClientQuery {
-	// TODO implement
+	query.buffer.WriteByte(10)
 	return query
 }
 
 //=========================================================
 
 type ServerResponse struct {
-	Command    string
-	ClientId   int
-	QueryId    int
-	ReturnCode int
-	EOT        bool
+	Command       string
+	ClientId      int
+	QueryId       int
+	AnswerSize    int
+	ReturnCode    int
+	ServerVersion string
+	EOT           bool
+	reader        *bytes.Reader
 }
 
-func NewServerResponse() *ServerResponse {
-	return &ServerResponse{}
+func NewServerResponse(conn net.Conn) *ServerResponse {
+	result := &ServerResponse{}
+	buffer, _ := ioutil.ReadAll(conn)
+	result.reader = bytes.NewReader(buffer)
+	result.Command = result.ReadAnsi()
+	result.ClientId = result.ReadInteger()
+	result.QueryId = result.ReadInteger()
+	result.AnswerSize = result.ReadInteger()
+	result.ServerVersion = result.ReadAnsi()
+	result.ReadAnsi()
+	result.ReadAnsi()
+	result.ReadAnsi()
+	result.ReadAnsi()
+	result.ReadAnsi()
+	return result
 }
 
 func (response *ServerResponse) CheckReturnCode(allowed ...int) bool {
-	// TODO implement
-	return false
+	if response.GetReturnCode() < 0 {
+		if contains(allowed, response.ReturnCode) {
+			return true
+		}
+		return false
+	}
+
+	return true
 }
 
 func (response *ServerResponse) GetLine() []byte {
-	// TODO impelement
-	return []byte{}
+	if response.EOT {
+		return []byte{}
+	}
+
+	result := bytes.Buffer{}
+	for response.reader.Len() != 0 {
+		one, err := response.reader.ReadByte()
+		if err != nil {
+			break
+		}
+		if one == 13  {
+			one, err = response.reader.ReadByte()
+			if err != nil {
+				break
+			}
+			if one != 10 {
+				_ = response.reader.UnreadByte()
+			}
+			break
+		}
+
+		result.WriteByte(one)
+	}
+
+	response.EOT = response.reader.Len() == 0
+
+	return result.Bytes()
 }
 
 func (response *ServerResponse) GetReturnCode() int {
-	// TODO implement
-	return 0
+	response.ReturnCode = response.ReadInteger()
+	return response.ReturnCode
 }
 
 func (response *ServerResponse) ReadAnsi() string {
-	// TODO implement
-	return ""
+	line := response.GetLine()
+	result := fromWin1251(line)
+	return result
 }
 
 func (response *ServerResponse) ReadInteger() int {
@@ -385,8 +497,9 @@ func (response *ServerResponse) ReadRemainingUtfText() string {
 }
 
 func (response *ServerResponse) ReadUtf() string {
-	// TODO implement
-	return ""
+	line := response.GetLine()
+	result := fromUtf8(line)
+	return result
 }
 
 //=========================================================
@@ -440,6 +553,9 @@ func (connection *IrbisConnection) Connect() bool {
 	query.AddAnsi(connection.Username).NewLine()
 	query.AddAnsi(connection.Password)
 	response := connection.Execute(query)
+	if response == nil {
+		return false
+	}
 	if response.GetReturnCode() < 0 {
 		return false
 	}
@@ -448,7 +564,6 @@ func (connection *IrbisConnection) Connect() bool {
 
 	// TODO implement
 
-	fmt.Println("Connected")
 	return true
 }
 
@@ -461,8 +576,6 @@ func (connection *IrbisConnection) Disconnect() bool {
 	query.AddAnsi(connection.Username)
 	connection.Execute(query)
 	connection.Connected = false
-
-	fmt.Println("Disconnected")
 	return true
 }
 
@@ -507,8 +620,23 @@ func (connection *IrbisConnection) DeleteDatabase(database string) bool {
 }
 
 func (connection *IrbisConnection) Execute(query *ClientQuery) *ServerResponse {
-	// TODO implement
-	return NewServerResponse()
+	address := connection.Host + ":" + strconv.Itoa(connection.Port)
+	socket, err := net.Dial("tcp", address)
+	if err != nil {
+		return nil
+	}
+
+	defer socket.Close()
+
+	buffer := query.Encode()
+	_, err = socket.Write(buffer)
+	if err != nil {
+		return nil
+	}
+
+	result := NewServerResponse(socket)
+
+	return result
 }
 
 func (connection *IrbisConnection) GetMaxMfn(database string) int {
@@ -553,8 +681,23 @@ func (connection *IrbisConnection) ReadRecord(mfn int) *MarcRecord {
 		return nil
 	}
 
-	// TODO implement
-	return &MarcRecord{}
+	query := NewClientQuery(connection, "C")
+	query.AddAnsi(connection.Database).NewLine()
+	query.Add(mfn).NewLine()
+	response := connection.Execute(query)
+	if response == nil {
+		return nil
+	}
+	if !response.CheckReturnCode() {
+		return nil
+	}
+
+	result := NewMarcRecord()
+	lines := response.ReadRemainingUtfLines()
+	result.Decode(lines)
+	result.Database = connection.Database
+
+	return result
 }
 
 func (connection *IrbisConnection) ToConnectionString() string {
@@ -592,19 +735,19 @@ func (connection *IrbisConnection) UnlockDatabase(database string) bool {
 	return true
 }
 
-func (connnection *IrbisConnection) UnlockRecords(database string,
+func (connection *IrbisConnection) UnlockRecords(database string,
 	mfnList []int) bool {
-	if !connnection.Connected {
+	if !connection.Connected {
 		return false
 	}
 
-	database = PeekOne(database, connnection.Database)
-	query := NewClientQuery(connnection, "Q")
+	database = PeekOne(database, connection.Database)
+	query := NewClientQuery(connection, "Q")
 	query.AddAnsi(database).NewLine()
 	for _, mfn := range mfnList {
 		query.Add(mfn).NewLine()
 	}
-	connnection.Execute(query)
+	connection.Execute(query)
 
 	return true
 }
@@ -655,13 +798,17 @@ func (connection *IrbisConnection) WriteRecord(record *MarcRecord) int {
 
 func main() {
 	connection := NewIrbisConnection()
+	connection.Username = "librarian"
+	connection.Password = "secret"
 	if !connection.Connect() {
 		fmt.Println("Can't connect")
+		return
 	}
+
+	defer connection.Disconnect()
 
 	maxMfn := connection.GetMaxMfn("IBIS")
 	fmt.Println("Max MFN", maxMfn)
 	record := connection.ReadRecord(123);
-	fmt.Println(record)
-	connection.Disconnect()
+	fmt.Println(record.Encode("\n"))
 }
