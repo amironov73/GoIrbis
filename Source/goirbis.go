@@ -5,7 +5,18 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"unicode"
 )
+
+const IrbisDelimiter = "\x1F\x1E"
+
+func IrbisToDos(text string) string {
+	return strings.ReplaceAll(text, IrbisDelimiter, "\n")
+}
+
+func IrbisToLines(text string) []string {
+	return strings.Split(text, IrbisDelimiter)
+}
 
 func PeekOne(lines ...string) string {
 	for _, line := range lines {
@@ -17,6 +28,16 @@ func PeekOne(lines ...string) string {
 	return ""
 }
 
+func SameRune(left, right rune) bool {
+	return unicode.ToUpper(left) == unicode.ToUpper(right)
+}
+
+func SameString(left, right string) bool {
+	return strings.EqualFold(left, right)
+}
+
+//=========================================================
+
 type SubField struct {
 	Code  rune
 	Value string
@@ -26,13 +47,17 @@ func NewSubField(code rune, value string) *SubField {
 	return &SubField{Code: code, Value: value}
 }
 
-func DecodeSubField(text string) *SubField {
+func (subfield *SubField) Decode(text string) {
 	runes := []rune(text)
-	code := runes[0]
-	value := text[1:]
-	result := NewSubField(code, value)
-	return result
+	subfield.Code = runes[0]
+	subfield.Value = text[1:]
 }
+
+func (subfield *SubField) Encode() string {
+	return "^" + string(subfield.Code) + subfield.Value;
+}
+
+//=========================================================
 
 type RecordField struct {
 	Tag       int
@@ -41,7 +66,7 @@ type RecordField struct {
 }
 
 func NewRecordField(tag int, value string) *RecordField {
-	return &RecordField{Tag: tag, Value: value, Subfields: []SubField{}}
+	return &RecordField{Tag: tag, Value: value}
 }
 
 func (field *RecordField) Add(code rune, value string) *RecordField {
@@ -56,6 +81,47 @@ func (field *RecordField) Clear() *RecordField {
 	return field;
 }
 
+func (field *RecordField) Decode(text string) {
+	// TODO implement
+}
+
+func (field *RecordField) Encode() string {
+	result := strings.Builder{}
+	result.WriteString(strconv.Itoa(field.Tag))
+	result.WriteRune('#')
+	result.WriteString(field.Value)
+	for i := range field.Subfields {
+		subfield := &field.Subfields[i]
+		result.WriteString(subfield.Encode())
+	}
+
+	return result.String()
+}
+
+func (field *RecordField) GetFirstSubField(code rune) *SubField {
+	for i := range field.Subfields {
+		candidate := &field.Subfields[i]
+		if SameRune(candidate.Code, code) {
+			return candidate
+		}
+	}
+
+	return nil
+}
+
+func (field *RecordField) GetFirstSubFieldValue(code rune) string {
+	for i := range field.Subfields {
+		candidate := &field.Subfields[i]
+		if SameRune(candidate.Code, code) {
+			return candidate.Value
+		}
+	}
+
+	return ""
+}
+
+//=========================================================
+
 type MarcRecord struct {
 	Database string
 	Mfn      int
@@ -65,7 +131,7 @@ type MarcRecord struct {
 }
 
 func NewMarcRecord() *MarcRecord {
-	return &MarcRecord{Fields: []RecordField{}}
+	return &MarcRecord{}
 }
 
 func (record *MarcRecord) Add(tag int, value string) *RecordField {
@@ -73,6 +139,93 @@ func (record *MarcRecord) Add(tag int, value string) *RecordField {
 	record.Fields = append(record.Fields, *field)
 	return field; // ???
 }
+
+func (record *MarcRecord) Decode(lines []string) {
+	firstLine := strings.Split(lines[0], "#")
+	record.Mfn, _ = strconv.Atoi(firstLine[0])
+	record.Status, _ = strconv.Atoi(firstLine[1])
+	secondLine := strings.Split(lines[1], "#")
+	record.Version, _ = strconv.Atoi(secondLine[1])
+	length := len(lines)
+	for i := 0; i < length; i++ {
+		line := lines[i]
+		if len(line) != 0 {
+			field := RecordField{}
+			field.Decode(line)
+		}
+	}
+}
+
+func (record *MarcRecord) Encode(delimiter string) string {
+	result := strings.Builder{}
+	result.WriteString(strconv.Itoa(record.Mfn))
+	result.WriteRune('#')
+	result.WriteString(strconv.Itoa(record.Status))
+	result.WriteString(delimiter)
+	result.WriteString("0#")
+	result.WriteString(strconv.Itoa(record.Version))
+	result.WriteString(delimiter)
+	for i := range record.Fields {
+		field := &record.Fields[i]
+		result.WriteString(field.Encode())
+		result.WriteString(delimiter)
+	}
+
+	return result.String()
+}
+
+func (record *MarcRecord) FM(tag int) string {
+	for i := range record.Fields {
+		field := &record.Fields[i]
+		if field.Tag == tag {
+			return field.Value
+		}
+	}
+
+	return ""
+}
+
+func (record *MarcRecord) FMA(tag int) (result []string) {
+	for i := range record.Fields {
+		field := &record.Fields[i]
+		if field.Tag == tag && field.Value != "" {
+			result = append(result, field.Value)
+		}
+	}
+
+	return
+}
+
+func (record *MarcRecord) GetField(tag, occurrence int) *RecordField {
+	for i := range record.Fields {
+		field := &record.Fields[i]
+		if field.Tag == tag {
+			if occurrence == 0 {
+				return field
+			}
+			occurrence--
+		}
+	}
+
+	return nil
+}
+
+func (record *MarcRecord) GetFields(tag int) (result []*RecordField) {
+	for i := range record.Fields {
+		field := &record.Fields[i]
+		if field.Tag == tag {
+			result = append(result, field)
+		}
+	}
+
+	return
+}
+
+func (record *MarcRecord) IsDeleted() bool {
+	return (record.Status & 3) != 0
+}
+
+//=========================================================
 
 type RawRecord struct {
 	Database string
@@ -87,7 +240,7 @@ func (record *RawRecord) Decode(lines []string) {
 }
 
 func (record *RawRecord) Encode(delimiter string) string {
-	var result strings.Builder
+	result := strings.Builder{}
 	result.WriteString(strconv.Itoa(record.Mfn))
 	result.WriteRune('#')
 	result.WriteString(strconv.Itoa(record.Status))
@@ -102,6 +255,29 @@ func (record *RawRecord) Encode(delimiter string) string {
 
 	return result.String()
 }
+
+//=========================================================
+
+type SearchParameters struct {
+	Database        string
+	FirstRecord     int
+	Format          string
+	MaxMfn          int
+	MinMfn          int
+	NumberOfRecords int
+	Expression      string
+	Sequential      string
+	Filter          string
+	IsUtf           bool
+}
+
+func NewSearchParameters() *SearchParameters {
+	return &SearchParameters {
+		FirstRecord: 1,
+	}
+}
+
+//=========================================================
 
 type ClientQuery struct {
 	Dummy int
@@ -140,6 +316,8 @@ func (query *ClientQuery) NewLine() *ClientQuery {
 	// TODO implement
 	return query
 }
+
+//=========================================================
 
 type ServerResponse struct {
 	Command    string
@@ -210,6 +388,8 @@ func (response *ServerResponse) ReadUtf() string {
 	// TODO implement
 	return ""
 }
+
+//=========================================================
 
 type IrbisConnection struct {
 	Host        string
@@ -369,8 +549,82 @@ func (connection *IrbisConnection) ReadRawRecord(mfn int) *RawRecord {
 }
 
 func (connection *IrbisConnection) ReadRecord(mfn int) *MarcRecord {
+	if !connection.Connected {
+		return nil
+	}
+
 	// TODO implement
 	return &MarcRecord{}
+}
+
+func (connection *IrbisConnection) ToConnectionString() string {
+	return "host=" + connection.Host +
+		";port=" + strconv.Itoa(connection.Port) +
+		";username=" + connection.Username +
+		";password=" + connection.Password +
+		";database=" + connection.Database +
+		";arm=" + connection.Workstation + ";"
+
+}
+
+func (connection *IrbisConnection) TruncateDatabase(database string) bool {
+	if !connection.Connected {
+		return false
+	}
+
+	query := NewClientQuery(connection, "S")
+	query.AddAnsi(database).NewLine()
+	connection.Execute(query)
+
+	return true
+}
+
+func (connection *IrbisConnection) UnlockDatabase(database string) bool {
+	if !connection.Connected {
+		return false
+	}
+
+	database = PeekOne(database, connection.Database)
+	query := NewClientQuery(connection, "U")
+	query.AddAnsi(database).NewLine()
+	connection.Execute(query)
+
+	return true
+}
+
+func (connnection *IrbisConnection) UnlockRecords(database string,
+	mfnList []int) bool {
+	if !connnection.Connected {
+		return false
+	}
+
+	database = PeekOne(database, connnection.Database)
+	query := NewClientQuery(connnection, "Q")
+	query.AddAnsi(database).NewLine()
+	for _, mfn := range mfnList {
+		query.Add(mfn).NewLine()
+	}
+	connnection.Execute(query)
+
+	return true
+}
+
+func (connection *IrbisConnection) UpdateIniFile(lines []string) bool {
+	if !connection.Connected {
+		return false
+	}
+
+	if len(lines) == 0 {
+		return true
+	}
+
+	query := NewClientQuery(connection, "8")
+	for _, line := range lines {
+		query.AddAnsi(line).NewLine()
+	}
+	connection.Execute(query)
+
+	return true
 }
 
 func (connection *IrbisConnection) WriteRawRecord(record *RawRecord) int {
@@ -396,6 +650,8 @@ func (connection *IrbisConnection) WriteRecord(record *MarcRecord) int {
 	// TODO implement
 	return 0
 }
+
+//=========================================================
 
 func main() {
 	connection := NewIrbisConnection()
