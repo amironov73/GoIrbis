@@ -5,6 +5,15 @@ image: Visual Studio 2017
 init:
   - git config --global core.autocrlf true
 
+install:
+  - rmdir c:\go /s /q
+  - appveyor DownloadFile https://dl.google.com/go/go1.12.1.windows-amd64.msi
+  - msiexec /i https://dl.google.com/go/go1.12.1.windows-amd64.msi /q
+  - choco install bzr
+  - set Path=c:\go\bin;\%Path%
+  - go version
+  - go env
+
 build_script:
   - compile.cmd
 
