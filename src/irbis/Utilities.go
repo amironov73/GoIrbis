@@ -1,7 +1,7 @@
 package irbis
 
 import (
-	"golang.org/x/text/encoding/charmap"
+	//	"golang.org/x/text/encoding/charmap"
 	"strings"
 	"unicode"
 )
@@ -20,16 +20,20 @@ func contains(s []int, item int) bool {
 }
 
 func toWin1251(text string) []byte {
-	encoder := charmap.Windows1251.NewEncoder()
-	result, _ := encoder.Bytes([]byte(text))
-	return result
+	return cp1251FromUnicode(text)
+
+	//encoder := charmap.Windows1251.NewEncoder()
+	//result, _ := encoder.Bytes([]byte(text))
+	//return result
 }
 
 func fromWin1251(buffer []byte) string {
-	decoder := charmap.Windows1251.NewDecoder()
-	temp, _ := decoder.Bytes(buffer)
-	result := string(temp)
-	return result
+	return cp1251ToUnicode(buffer)
+
+	//decoder := charmap.Windows1251.NewDecoder()
+	//temp, _ := decoder.Bytes(buffer)
+	//result := string(temp)
+	//return result
 }
 
 func toUtf8(text string) []byte {

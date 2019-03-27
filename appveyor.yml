@@ -16,6 +16,6 @@ build_script:
   - compile.cmd
 
 artifacts:
-  - path: Binaries
-    name: Binaries
+  - path: bin
+    name: bin
 
