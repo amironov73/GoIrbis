@@ -45,7 +45,7 @@ func fromUtf8(buffer []byte) string {
 	return string(buffer)
 }
 
-func removeComments(text string) string  {
+func removeComments(text string) string {
 	if len(text) == 0 || !strings.Contains(text, "/*") {
 		return text
 	}
@@ -69,7 +69,7 @@ func removeComments(text string) string  {
 
 		default:
 			if c == '/' {
-				if (index + 1 < length) && (chars[index + 1] == '*') {
+				if (index+1 < length) && (chars[index+1] == '*') {
 					for index < length {
 						c = chars[index]
 						if (c == '\r') || (c == '\n') {
@@ -151,4 +151,9 @@ func SameRune(left, right rune) bool {
 
 func SameString(left, right string) bool {
 	return strings.EqualFold(left, right)
+}
+
+func SplitLines(text string) []string {
+	// TODO implement properly
+	return strings.Split(text, "\n")
 }

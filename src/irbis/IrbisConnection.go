@@ -186,6 +186,69 @@ func (connection *IrbisConnection) Execute(query *ClientQuery) *ServerResponse {
 
 //===================================================================
 
+func (connection *IrbisConnection) FormatMfn(format string, mfn int) string {
+	if !connection.Connected {
+		return ""
+	}
+
+	query := NewClientQuery(connection, "G")
+	query.AddAnsi(connection.Database).NewLine()
+	prepared := prepareFormat(format)
+	query.AddAnsi(prepared).NewLine()
+	query.Add(1).NewLine()
+	query.Add(mfn).NewLine()
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return ""
+	}
+	result := strings.TrimSpace(response.ReadRemainingUtfText())
+	return result
+}
+
+//===================================================================
+
+func (connection *IrbisConnection) FormatMfnUtf(format string, mfn int) string {
+	if !connection.Connected {
+		return ""
+	}
+
+	query := NewClientQuery(connection, "G")
+	query.AddAnsi(connection.Database).NewLine()
+	prepared := "!" + prepareFormat(format)
+	query.AddUtf(prepared).NewLine()
+	query.Add(1).NewLine()
+	query.Add(mfn).NewLine()
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return ""
+	}
+	result := strings.TrimSpace(response.ReadRemainingUtfText())
+	return result
+}
+
+//===================================================================
+
+func (connection *IrbisConnection) FormatRecord(format string, record *MarcRecord) string {
+	if !connection.Connected {
+		return ""
+	}
+	database := PickOne(record.Database, connection.Database)
+	query := NewClientQuery(connection, "G")
+	query.AddAnsi(database).NewLine()
+	prepared := prepareFormat(format)
+	query.AddAnsi(prepared).NewLine()
+	query.Add(-2).NewLine()
+	query.AddUtf(record.Encode(IrbisDelimiter))
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return ""
+	}
+	result := response.ReadRemainingUtfText()
+	return result
+}
+
+//===================================================================
+
 func (connection *IrbisConnection) GetMaxMfn(database string) int {
 	if !connection.Connected {
 		return 0
@@ -260,6 +323,24 @@ func (connection *IrbisConnection) ParseConnectionString(connectionString string
 
 //===================================================================
 
+func (connection *IrbisConnection) ReadMenuFile(specification string) *MenuFile {
+	if !connection.Connected {
+		return nil
+	}
+
+	lines := connection.ReadTextLines(specification)
+	if lines == nil || len(lines) == 0 {
+		return nil
+	}
+
+	result := new(MenuFile)
+	result.Parse(lines)
+
+	return result
+}
+
+//===================================================================
+
 func (connection *IrbisConnection) ReadRawRecord(mfn int) *RawRecord {
 	if !connection.Connected {
 		return nil
@@ -300,6 +381,26 @@ func (connection *IrbisConnection) ReadRecord(mfn int) *MarcRecord {
 	lines := response.ReadRemainingUtfLines()
 	result.Decode(lines)
 	result.Database = connection.Database
+
+	return result
+}
+
+//===================================================================
+
+func (connection *IrbisConnection) ReadTextLines(specification string) []string {
+	if !connection.Connected {
+		return []string{}
+	}
+
+	query := NewClientQuery(connection, "L")
+	query.AddAnsi(specification).NewLine()
+	response := connection.Execute(query)
+	if response == nil {
+		return []string{}
+	}
+
+	text := response.ReadAnsi()
+	result := IrbisToLines(text)
 
 	return result
 }
