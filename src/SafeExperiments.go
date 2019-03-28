@@ -23,7 +23,13 @@ func main() {
 	fmt.Println("Server version: ", connection.ServerVersion)
 	fmt.Println("Interval: ", connection.Interval)
 
+	version := connection.GetServerVersion()
+	fmt.Println("Organization:", version.Organization)
+
 	connection.NoOp()
+
+	users := connection.GetUserList()
+	fmt.Println(users)
 
 	maxMfn := connection.GetMaxMfn("IBIS")
 	fmt.Println("Max MFN", maxMfn)

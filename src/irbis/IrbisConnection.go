@@ -267,6 +267,42 @@ func (connection *IrbisConnection) GetMaxMfn(database string) int {
 
 //===================================================================
 
+func (connection *IrbisConnection) GetServerVersion() (result VersionInfo) {
+	if !connection.Connected {
+		return
+	}
+
+	query := NewClientQuery(connection, "1")
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return
+	}
+
+	lines := response.ReadRemainingAnsiLines()
+	result.Parse(lines)
+	return
+}
+
+//===================================================================
+
+func (connection *IrbisConnection) GetUserList() (result []UserInfo) {
+	if !connection.Connected {
+		return
+	}
+
+	query := NewClientQuery(connection, "+9")
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return
+	}
+
+	lines := response.ReadRemainingAnsiLines()
+	result = parseUsers(lines)
+	return
+}
+
+//===================================================================
+
 func (connection *IrbisConnection) NoOp() bool {
 	if !connection.Connected {
 		return false
