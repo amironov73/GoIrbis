@@ -13,7 +13,7 @@ Currently supported Go 1.12 on 64-bit Windows and Ubuntu
 ```go
 package main
 
-import "./src/irbis"
+import "../src/irbis"
 
 func main ()  {
 	// Connect to the server
