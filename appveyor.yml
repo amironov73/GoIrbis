@@ -14,6 +14,7 @@ install:
 
 build_script:
   - compile.cmd
+  - compile_for_linux.cmd
 
 artifacts:
   - path: bin

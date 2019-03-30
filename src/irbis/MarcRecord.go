@@ -73,6 +73,22 @@ func (record *MarcRecord) FM(tag int) string {
 	return ""
 }
 
+func (record *MarcRecord) FSM(tag int, code rune) string {
+	for i := range record.Fields {
+		field := &record.Fields[i]
+		if field.Tag == tag {
+			for j := range field.Subfields {
+				subfield := &field.Subfields[j]
+				if SameRune(subfield.Code, code) {
+					return subfield.Value
+				}
+			}
+		}
+	}
+
+	return ""
+}
+
 func (record *MarcRecord) FMA(tag int) (result []string) {
 	for i := range record.Fields {
 		field := &record.Fields[i]

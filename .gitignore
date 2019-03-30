@@ -15,4 +15,4 @@
 .idea/
 
 # Output
-Binaries/
+bin/
