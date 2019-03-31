@@ -28,6 +28,16 @@ func main() {
 
 	connection.NoOp()
 
+	processes := connection.ListProcesses()
+	fmt.Println("Processes:", processes)
+
+	databases := connection.ListDatabases("")
+	fmt.Println("Databases:", databases)
+
+	dbInfo := connection.GetDatabaseInfo("IBIS")
+	fmt.Println("Deleted records:", len(dbInfo.LogicallyDeletedRecords)+
+		len(dbInfo.PhysicallyDeletedRecords))
+
 	users := connection.GetUserList()
 	fmt.Println(users)
 

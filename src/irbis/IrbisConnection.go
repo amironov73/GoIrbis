@@ -344,6 +344,28 @@ func (connection *IrbisConnection) FormatRecord(format string, record *MarcRecor
 
 //===================================================================
 
+// GetDatabaseInfo Получение информации об указанной базе данных.
+func (connection *IrbisConnection) GetDatabaseInfo(database string) *DatabaseInfo {
+	if !connection.Connected {
+		return nil
+	}
+
+	query := NewClientQuery(connection, "0")
+	query.AddAnsi(database)
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return nil
+	}
+
+	lines := response.ReadRemainingAnsiLines()
+	result := new(DatabaseInfo)
+	result.Parse(lines)
+	result.Name = database
+	return result
+}
+
+//===================================================================
+
 // GetMaxMfn Получение максимального MFN для указанной базы данных.
 func (connection *IrbisConnection) GetMaxMfn(database string) int {
 	if !connection.Connected {
@@ -396,6 +418,73 @@ func (connection *IrbisConnection) GetUserList() (result []UserInfo) {
 
 	lines := response.ReadRemainingAnsiLines()
 	result = parseUsers(lines)
+	return
+}
+
+//===================================================================
+
+// ListDatabases Получение списка баз данных с сервера.
+func (connection *IrbisConnection) ListDatabases(specification string) (result []DatabaseInfo) {
+	if !connection.Connected {
+		return
+	}
+
+	if len(specification) == 0 {
+		specification = "1..dbnam2.mnu"
+	}
+
+	menu := connection.ReadMenuFile(specification)
+	if menu == nil {
+		return
+	}
+
+	result = ParseMenu(menu)
+	return
+}
+
+//===================================================================
+
+func (connection *IrbisConnection) ListFiles(specification string) (result []string) {
+	if !connection.Connected || len(specification) == 0 {
+		return
+	}
+
+	query := NewClientQuery(connection, "!")
+	query.AddAnsi(specification)
+	response := connection.Execute(query)
+	if response == nil {
+		return
+	}
+
+	lines := response.ReadRemainingAnsiLines()
+	for _, line := range lines {
+		files := IrbisToLines(line)
+		for _, file := range files {
+			if len(file) != 0 {
+				result = append(result, file)
+			}
+		}
+	}
+
+	return
+}
+
+//===================================================================
+
+// ListProcesses Получение списка серверных процессов
+func (connection *IrbisConnection) ListProcesses() (result []ProcessInfo) {
+	if !connection.Connected {
+		return
+	}
+
+	query := NewClientQuery(connection, "+3")
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return
+	}
+
+	lines := response.ReadRemainingAnsiLines()
+	result = ParseProcesses(lines)
 	return
 }
 

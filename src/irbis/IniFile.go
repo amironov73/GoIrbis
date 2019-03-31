@@ -117,10 +117,7 @@ func (file *IniFile) Parse(lines []string) {
 		}
 		if line[0] == '[' {
 			name := line[1 : len(line)-1]
-			section = new(IniSection)
-			file.Sections = append(file.Sections, *section)
-			section = &file.Sections[len(file.Sections)-1]
-			section.Name = name
+			section = file.GetOrCreateSection(name)
 		} else if section != nil {
 			parts := strings.SplitN(line, "=", 2)
 			if len(parts) == 2 {
