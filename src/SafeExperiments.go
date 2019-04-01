@@ -84,4 +84,14 @@ func main() {
 
 	stat := connection.GetServerStat()
 	fmt.Println(stat)
+
+	files := connection.ListFiles("3.IBIS.brief.*", "3.IBIS.a*.pft")
+	fmt.Println(files)
+
+	parFile := connection.ReadParFile("1..IBIS.PAR")
+	fmt.Println(parFile)
+
+	optFile := connection.ReadOptFile("3.IBIS.WS31.OPT")
+	fmt.Println(optFile)
+
 }

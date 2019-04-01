@@ -134,7 +134,7 @@ func (file *IniFile) SetValue(sectionName, key, value string) {
 }
 
 func (file *IniFile) String() string {
-	var result strings.Builder
+	result := strings.Builder{}
 	first := true
 	for i := range file.Sections {
 		if !first {

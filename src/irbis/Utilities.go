@@ -135,6 +135,16 @@ func IrbisToLines(text string) []string {
 	return strings.Split(text, IrbisDelimiter)
 }
 
+func LinesToIrbis(lines []string) string {
+	result := strings.Builder{}
+	for _, line := range lines {
+		result.WriteString(line)
+		result.WriteString(IrbisDelimiter)
+	}
+
+	return result.String()
+}
+
 func PickOne(lines ...string) string {
 	for _, line := range lines {
 		if len(line) != 0 {
@@ -156,6 +166,13 @@ func SameString(left, right string) bool {
 func SplitLines(text string) []string {
 	// TODO implement properly
 	return strings.Split(text, "\n")
+}
+
+func boolToInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
 }
 
 func DescribeError(code int) string {

@@ -80,7 +80,7 @@ func (menu *MenuFile) Parse(lines []string) {
 }
 
 func (menu *MenuFile) String() string {
-	var result strings.Builder
+	result := strings.Builder{}
 	for _, entry := range menu.Entries {
 		result.WriteString(entry.String() + "\n")
 	}

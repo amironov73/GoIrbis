@@ -93,7 +93,7 @@ func (stat *ServerStat) Parse(lines []string) {
 }
 
 func (stat *ServerStat) String() string {
-	var result strings.Builder
+	result := strings.Builder{}
 	result.WriteString(strconv.Itoa(stat.TotalCommandCount))
 	result.WriteString("\n")
 	result.WriteString(strconv.Itoa(stat.ClientCount))

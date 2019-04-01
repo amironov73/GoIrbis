@@ -476,6 +476,66 @@ func (connection *IrbisConnection) GetUserList() (result []UserInfo) {
 
 //===================================================================
 
+// GlobalCorrection Глобальная корректировка.
+func (connection *IrbisConnection) GlobalCorrection(settings *GblSettings) (result []string) {
+	if !connection.Connected {
+		return
+	}
+
+	database := PickOne(settings.Database, connection.Database)
+	query := NewClientQuery(connection, "5")
+	query.AddAnsi(database).NewLine()
+	query.Add(boolToInt(settings.Actualize)).NewLine()
+
+	if len(settings.Filename) != 0 {
+		query.AddAnsi("@" + settings.Filename).NewLine()
+	} else {
+		var encoded strings.Builder
+		encoded.WriteString("!0")
+		encoded.WriteString(IrbisDelimiter)
+		for _, statement := range settings.Statements {
+			encoded.WriteString(statement.Encode(IrbisDelimiter))
+		}
+		encoded.WriteString(IrbisDelimiter)
+		query.AddUtf(encoded.String()).NewLine()
+	}
+
+	query.AddAnsi(settings.SearchExpression).NewLine()
+	query.Add(settings.FirstRecord).NewLine()
+	query.Add(settings.NumberOfRecords).NewLine()
+
+	if len(settings.MfnList) != 0 {
+		count := settings.MaxMfn - settings.MinMfn + 1
+		query.Add(count).NewLine()
+		for mfn := settings.MinMfn; mfn < settings.MaxMfn; mfn++ {
+			query.Add(mfn).NewLine()
+		}
+	} else {
+		query.Add(len(settings.MfnList)).NewLine()
+		for _, mfn := range settings.MfnList {
+			query.Add(mfn).NewLine()
+		}
+	}
+
+	if !settings.FormalControl {
+		query.AddAnsi("*").NewLine()
+	}
+
+	if !settings.Autoin {
+		query.AddAnsi("&").NewLine()
+	}
+
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return
+	}
+
+	result = response.ReadRemainingAnsiLines()
+	return
+}
+
+//===================================================================
+
 // ListDatabases Получение списка баз данных с сервера.
 func (connection *IrbisConnection) ListDatabases(specification string) (result []DatabaseInfo) {
 	if !connection.Connected {
@@ -497,13 +557,17 @@ func (connection *IrbisConnection) ListDatabases(specification string) (result [
 
 //===================================================================
 
-func (connection *IrbisConnection) ListFiles(specification string) (result []string) {
-	if !connection.Connected || len(specification) == 0 {
+// ListFiles Получение списка файлов на сервере.
+func (connection *IrbisConnection) ListFiles(specifications ...string) (result []string) {
+	if !connection.Connected {
 		return
 	}
 
 	query := NewClientQuery(connection, "!")
-	query.AddAnsi(specification)
+	for _, specification := range specifications {
+		query.AddAnsi(specification).NewLine()
+	}
+
 	response := connection.Execute(query)
 	if response == nil {
 		return
@@ -638,6 +702,33 @@ func (connection *IrbisConnection) ParseConnectionString(connectionString string
 
 //===================================================================
 
+func (connection *IrbisConnection) PrintTable(definition *TableDefinition) (result string) {
+	if !connection.Connected {
+		return
+	}
+
+	database := PickOne(definition.Database, connection.Database)
+	query := NewClientQuery(connection, "7")
+	query.AddAnsi(database).NewLine()
+	query.AddAnsi(definition.Table).NewLine()
+	query.AddAnsi(LinesToIrbis(definition.Headers)).NewLine()
+	query.AddAnsi(definition.Mode).NewLine()
+	query.AddAnsi(definition.SearchQuery).NewLine()
+	query.Add(definition.MinMfn).NewLine()
+	query.Add(definition.MaxMfn).NewLine()
+	query.AddUtf(definition.SequentialQuery).NewLine()
+	query.AddAnsi("") // Вместо перечня MFN
+	response := connection.Execute(query)
+	if response == nil {
+		return
+	}
+
+	result = response.ReadRemainingUtfText()
+	return
+}
+
+//===================================================================
+
 // ReadIniFile Чтение INI-файла с сервера.
 func (connection *IrbisConnection) ReadIniFile(specification string) *IniFile {
 	if !connection.Connected {
@@ -672,6 +763,35 @@ func (connection *IrbisConnection) ReadMenuFile(specification string) *MenuFile 
 	result.Parse(lines)
 
 	return result
+}
+
+//===================================================================
+
+// ReadOptFile Чтение OPT-файла с сервера.
+func (connection *IrbisConnection) ReadOptFile(specification string) (result *OptFile) {
+	lines := connection.ReadTextLines(specification)
+	if len(lines) == 0 {
+		return
+	}
+
+	result = NewOptFile()
+	result.Parse(lines)
+
+	return result
+}
+
+//===================================================================
+
+// ReadParFile Чтение PAR-файла с сервера
+func (connection *IrbisConnection) ReadParFile(specification string) (result *ParFile) {
+	lines := connection.ReadTextLines(specification)
+	if len(lines) == 0 {
+		return
+	}
+
+	result = NewParFile("")
+	result.Parse(lines)
+	return
 }
 
 //===================================================================
