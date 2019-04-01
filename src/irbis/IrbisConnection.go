@@ -48,8 +48,8 @@ type IrbisConnection struct {
 	// Connected Признак подключения.
 	Connected bool
 
-	// IniFile Серверный INI-файл (становится доступен после подключения).
-	IniFile *IniFile
+	// Ini Серверный INI-файл (становится доступен после подключения).
+	Ini *IniFile
 }
 
 //===================================================================
@@ -129,7 +129,7 @@ AGAIN:
 	lines := response.ReadRemainingAnsiLines()
 	ini := NewIniFile()
 	ini.Parse(lines)
-	connection.IniFile = ini
+	connection.Ini = ini
 
 	return true
 }
@@ -344,6 +344,39 @@ func (connection *IrbisConnection) FormatRecord(format string, record *MarcRecor
 
 //===================================================================
 
+// FormatRecords Расформатирование нескольких записей.
+func (connection *IrbisConnection) FormatRecords(format string, list []int) (result []string) {
+	if !connection.Connected || len(list) == 0 {
+		return
+	}
+
+	query := NewClientQuery(connection, "G")
+	query.AddAnsi(connection.Database).NewLine()
+	prepared := prepareFormat(format)
+	query.AddAnsi(prepared).NewLine()
+	query.Add(len(list)).NewLine()
+	for _, mfn := range list {
+		query.Add(mfn).NewLine()
+	}
+
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return
+	}
+
+	lines := response.ReadRemainingUtfLines()
+	for _, line := range lines {
+		parts := strings.SplitN(line, "#", 2)
+		if len(parts) > 1 {
+			result = append(result, parts[1])
+		}
+	}
+
+	return
+}
+
+//===================================================================
+
 // GetDatabaseInfo Получение информации об указанной базе данных.
 func (connection *IrbisConnection) GetDatabaseInfo(database string) *DatabaseInfo {
 	if !connection.Connected {
@@ -381,6 +414,26 @@ func (connection *IrbisConnection) GetMaxMfn(database string) int {
 	}
 
 	return response.ReturnCode
+}
+
+//===================================================================
+
+// Получение статистики с сервера.
+func (connection *IrbisConnection) GetServerStat() (result ServerStat) {
+	if !connection.Connected {
+		return
+	}
+
+	query := NewClientQuery(connection, "+1")
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return
+	}
+
+	lines := response.ReadRemainingAnsiLines()
+	result.Parse(lines)
+
+	return
 }
 
 //===================================================================
@@ -490,6 +543,42 @@ func (connection *IrbisConnection) ListProcesses() (result []ProcessInfo) {
 
 //===================================================================
 
+// ListTerms Получение списка терминов с указанным префиксом.
+func (connection *IrbisConnection) ListTerms(prefix string) (result []string) {
+	if !connection.Connected {
+		return
+	}
+
+	prefixLength := len(prefix)
+	startTerm := prefix
+	lastTerm := startTerm
+	flag := true
+	for flag {
+		terms := connection.ReadTerms(startTerm, 512)
+		if len(terms) == 0 {
+			break
+		}
+		for _, term := range terms {
+			text := term.Text
+			if !strings.HasPrefix(text, prefix) {
+				flag = false
+				break
+			}
+			if text != startTerm {
+				lastTerm = text
+				text = text[prefixLength:]
+				result = append(result, text)
+			}
+		}
+
+		startTerm = lastTerm
+	}
+
+	return
+}
+
+//===================================================================
+
 // NoOp Пустая операция. Используется для периодического
 // подтверждения подключения клиента.
 func (connection *IrbisConnection) NoOp() bool {
@@ -587,6 +676,40 @@ func (connection *IrbisConnection) ReadMenuFile(specification string) *MenuFile 
 
 //===================================================================
 
+// ReadPostings Считывание постингов из поискового индекса.
+func (connection *IrbisConnection) ReadPostings(parameters *PostingParameters) (result []TermPosting) {
+	if !connection.Connected {
+		return
+	}
+
+	database := PickOne(parameters.Database, connection.Database)
+	query := NewClientQuery(connection, "I")
+	query.AddAnsi(database).NewLine()
+	query.Add(parameters.NumberOfPostings).NewLine()
+	query.Add(parameters.FirstPosting).NewLine()
+	prepared := prepareFormat(parameters.Format)
+	query.AddAnsi(prepared).NewLine()
+	if len(parameters.ListOfTerms) == 0 {
+		query.AddUtf(parameters.Term).NewLine()
+	} else {
+		for _, term := range parameters.ListOfTerms {
+			query.AddUtf(term).NewLine()
+		}
+	}
+
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return
+	}
+
+	lines := response.ReadRemainingUtfLines()
+	result = ParsePostings(lines)
+
+	return
+}
+
+//===================================================================
+
 // ReadRawRecord Чтение указанной записи в "сыром" виде.
 func (connection *IrbisConnection) ReadRawRecord(mfn int) *RawRecord {
 	if !connection.Connected {
@@ -631,6 +754,45 @@ func (connection *IrbisConnection) ReadRecord(mfn int) *MarcRecord {
 	result.Database = connection.Database
 
 	return result
+}
+
+//===================================================================
+
+// ReadTerms Простое получение терминов поискового словаря.
+func (connection *IrbisConnection) ReadTerms(startTerm string, number int) []TermInfo {
+	parameters := TermParameters{StartTerm: startTerm, NumberOfTerms: number}
+	return connection.ReadTermsEx(&parameters)
+}
+
+//===================================================================
+
+// ReadTermsEx Получение терминов поискового словаря.
+func (connection *IrbisConnection) ReadTermsEx(parameters *TermParameters) (result []TermInfo) {
+	if !connection.Connected {
+		return
+	}
+
+	command := "H"
+	if parameters.ReverseOrder {
+		command = "P"
+	}
+
+	database := PickOne(parameters.Database, connection.Database)
+	query := NewClientQuery(connection, command)
+	query.AddAnsi(database).NewLine()
+	query.AddUtf(parameters.StartTerm).NewLine()
+	query.Add(parameters.NumberOfTerms).NewLine()
+	prepared := prepareFormat(parameters.Format)
+	query.AddAnsi(prepared).NewLine()
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode(-202, -203, -204) {
+		return
+	}
+
+	lines := response.ReadRemainingUtfLines()
+	result = ParseTerms(lines)
+
+	return
 }
 
 //===================================================================

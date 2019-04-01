@@ -16,7 +16,7 @@ func main() {
 
 	defer connection.Disconnect()
 
-	ini := connection.IniFile
+	ini := connection.Ini
 	dbnnamecat := ini.GetValue("Main", "DBNNAMECAT", "???")
 	fmt.Println("DBNNAMECAT:", dbnnamecat)
 
@@ -52,6 +52,9 @@ func main() {
 	formatted = connection.FormatMfnUtf(format, mfn)
 	fmt.Println(formatted)
 
+	manyFormatted := connection.FormatRecords("@brief", []int{1, 2, 3})
+	fmt.Println(manyFormatted)
+
 	record := connection.ReadRecord(123)
 	fmt.Println(record.Encode("\n"))
 
@@ -69,4 +72,16 @@ func main() {
 
 	menu := connection.ReadMenuFile("3.IBIS.FORMATW.MNU")
 	fmt.Println(menu.String())
+
+	languages := connection.ListTerms("J=")
+	fmt.Println(languages)
+
+	postingParameters := irbis.NewPostingParameters()
+	postingParameters.Term = "J=CHI"
+	postingParameters.NumberOfPostings = 100
+	postings := connection.ReadPostings(postingParameters)
+	fmt.Println(postings)
+
+	stat := connection.GetServerStat()
+	fmt.Println(stat)
 }
