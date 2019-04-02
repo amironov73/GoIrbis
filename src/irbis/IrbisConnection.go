@@ -729,6 +729,19 @@ func (connection *IrbisConnection) PrintTable(definition *TableDefinition) (resu
 
 //===================================================================
 
+// ReadBinaryFile Чтение двоичного файла с сервера.
+func (connection *IrbisConnection) ReadBinaryFile(specification string) []byte {
+	if !connection.Connected {
+		return nil
+	}
+
+	// TODO implement
+
+	return nil
+}
+
+//===================================================================
+
 // ReadIniFile Чтение INI-файла с сервера.
 func (connection *IrbisConnection) ReadIniFile(specification string) *IniFile {
 	if !connection.Connected {
@@ -878,6 +891,93 @@ func (connection *IrbisConnection) ReadRecord(mfn int) *MarcRecord {
 
 //===================================================================
 
+// ReadRecordVersion Чтение указанной версии записи.
+func (connection *IrbisConnection) ReadRecordVersion(mfn, version int) *MarcRecord {
+	if !connection.Connected {
+		return nil
+	}
+
+	query := NewClientQuery(connection, "C")
+	query.AddAnsi(connection.Database).NewLine()
+	query.Add(mfn).NewLine()
+	query.Add(version)
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return nil
+	}
+
+	result := NewMarcRecord()
+	lines := response.ReadRemainingUtfLines()
+	result.Decode(lines)
+	result.Database = connection.Database
+
+	return result
+}
+
+//===================================================================
+
+// ReadRecords Чтение с сервера нескольких записей.
+func (connection *IrbisConnection) ReadRecords(mfnList []int) (result []MarcRecord) {
+	if !connection.Connected || len(mfnList) == 0 {
+		return
+	}
+
+	if len(mfnList) == 1 {
+		record := connection.ReadRecord(mfnList[0])
+		if record == nil {
+			return
+		}
+		result = append(result, *record)
+		return
+	}
+
+	query := NewClientQuery(connection, "G")
+	query.AddAnsi(connection.Database).NewLine()
+	query.AddAnsi(ALL_FORMAT).NewLine()
+	query.Add(len(mfnList)).NewLine()
+	for _, mfn := range mfnList {
+		query.Add(mfn).NewLine()
+	}
+
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return
+	}
+
+	lines := response.ReadRemainingUtfLines()
+	for _, line := range lines {
+		if len(line) == 0 {
+			continue
+		}
+		parts := strings.SplitN(line, "#", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		parts = strings.Split(parts[1], "\x1F")[1:]
+		record := NewMarcRecord()
+		record.Decode(lines)
+		record.Database = connection.Database
+		result = append(result, *record)
+	}
+
+	return
+}
+
+//===================================================================
+
+// ReadSearchScenario Загрузка сценариев поиска с сервера.
+func (connection *IrbisConnection) ReadSearchScenario(specification string) (result []SearchScenario) {
+	ini := connection.ReadIniFile(specification)
+	if ini == nil || len(ini.Sections) == 0 {
+		return
+	}
+
+	result = ParseScenarios(ini)
+	return
+}
+
+//===================================================================
+
 // ReadTerms Простое получение терминов поискового словаря.
 func (connection *IrbisConnection) ReadTerms(startTerm string, number int) []TermInfo {
 	parameters := TermParameters{StartTerm: startTerm, NumberOfTerms: number}
@@ -959,6 +1059,41 @@ func (connection *IrbisConnection) ReadTextLines(specification string) []string 
 
 //===================================================================
 
+// ReadTreeFile Чтение TRE-файла с сервера.
+func (connection *IrbisConnection) ReadTreeFile(specification string) (result *TreeFile) {
+	lines := connection.ReadTextLines(specification)
+	if len(lines) == 0 {
+		return
+	}
+
+	result = new(TreeFile)
+	result.Parse(lines)
+	return
+}
+
+//===================================================================
+
+// ReloadDictionary Пересоздание словаря для указанной базы данных.
+func (connection *IrbisConnection) ReloadDictionary(database string) (result bool) {
+	return connection.ExecuteAnyCommand("Y", database)
+}
+
+//===================================================================
+
+// ReloadMasterFile Пересоздание мастер-файла для указанной базы данных.
+func (connection *IrbisConnection) ReloadMasterFile(database string) (result bool) {
+	return connection.ExecuteAnyCommand("X", database)
+}
+
+//===================================================================
+
+// RestartServer Перезапуск сервера (без утери подключенных клиентов).
+func (connection *IrbisConnection) RestartServer() (result bool) {
+	return connection.ExecuteAnyCommand("+8")
+}
+
+//===================================================================
+
 // Search Простой поиск записей (возвращается не более 32 тыс. записей).
 func (connection *IrbisConnection) Search(expression string) []int {
 	if !connection.Connected {
@@ -979,6 +1114,58 @@ func (connection *IrbisConnection) Search(expression string) []int {
 	lines := response.ReadRemainingUtfLines()
 	result := parseFoundMfn(lines)
 	return result
+}
+
+//===================================================================
+
+// SearchAll Поиск всех записей (даже если их окажется больше 32 тыс.).
+func (connection *IrbisConnection) SearchAll(expression string) (result []int) {
+	if !connection.Connected {
+		return
+	}
+
+	firstRecord := 1
+	var totalCount int
+
+	for {
+		query := NewClientQuery(connection, "K")
+		query.AddAnsi(connection.Database).NewLine()
+		query.AddUtf(expression).NewLine()
+		query.Add(10000).NewLine()
+		query.Add(firstRecord).NewLine()
+
+		response := connection.Execute(query)
+		if response == nil || !response.CheckReturnCode() {
+			break
+		}
+
+		if firstRecord == 1 {
+			totalCount = response.ReadInteger()
+			if totalCount == 0 {
+				break
+			}
+		} else {
+			_ = response.ReadInteger()
+		}
+
+		lines := response.ReadRemainingUtfLines()
+		if len(lines) == 0 {
+			break
+		}
+		for _, line := range lines {
+			if len(line) != 0 {
+				mfn, _ := strconv.Atoi(line)
+				result = append(result, mfn)
+				firstRecord++
+			}
+		}
+
+		if firstRecord >= totalCount {
+			break
+		}
+	}
+
+	return
 }
 
 //===================================================================
@@ -1036,6 +1223,49 @@ func (connection *IrbisConnection) SearchEx(parameters *SearchParameters) []Foun
 
 //===================================================================
 
+// SearchRead Поиск записей с их одновременным считыванием.
+func (connection *IrbisConnection) SearchRead(expression string, limit int) (result []MarcRecord) {
+	if !connection.Connected {
+		return
+	}
+
+	parameters := NewSearchParameters()
+	parameters.Expression = expression
+	parameters.Format = ALL_FORMAT
+	parameters.NumberOfRecords = limit
+	found := connection.SearchEx(parameters)
+	if len(found) == 0 {
+		return
+	}
+
+	for _, item := range found {
+		lines := strings.Split(item.Description, "\x1F")
+		lines = lines[1:]
+		record := MarcRecord{}
+		record.Decode(lines)
+		record.Database = connection.Database
+		result = append(result, record)
+	}
+
+	return result
+}
+
+//===================================================================
+
+// SearchSingleRecord Поиск и считывание одной записи, соответствующей выражение.
+// Если таких записей больше одной, то будет считана любая из них.
+// Если таких записей нет, будет возвращен nil.
+func (connection *IrbisConnection) SearchSingleRecord(expression string) *MarcRecord {
+	found := connection.SearchRead(expression, 1)
+	if len(found) != 0 {
+		return &found[0]
+	}
+
+	return nil
+}
+
+//===================================================================
+
 // ToConnectionString Выдача строки подключения для текущего соеденения
 // (соединение не обязательно должно быть установлено).
 func (connection *IrbisConnection) ToConnectionString() string {
@@ -1052,15 +1282,7 @@ func (connection *IrbisConnection) ToConnectionString() string {
 
 // TruncateDatabase Опустошение указанной базы данных.
 func (connection *IrbisConnection) TruncateDatabase(database string) bool {
-	if !connection.Connected {
-		return false
-	}
-
-	query := NewClientQuery(connection, "S")
-	query.AddAnsi(database).NewLine()
-	connection.Execute(query)
-
-	return true
+	return connection.ExecuteAnyCommand("S", database)
 }
 
 //===================================================================
@@ -1090,16 +1312,7 @@ func (connection *IrbisConnection) UndeleteRecord(mfn int) *MarcRecord {
 
 // UnlockDatabase Разблокирование указанной базы данных.
 func (connection *IrbisConnection) UnlockDatabase(database string) bool {
-	if !connection.Connected {
-		return false
-	}
-
-	database = PickOne(database, connection.Database)
-	query := NewClientQuery(connection, "U")
-	query.AddAnsi(database).NewLine()
-	connection.Execute(query)
-
-	return true
+	return connection.ExecuteAnyCommand("U", database)
 }
 
 //===================================================================
@@ -1146,6 +1359,13 @@ func (connection *IrbisConnection) UpdateIniFile(lines []string) bool {
 	connection.Execute(query)
 
 	return true
+}
+
+//===================================================================
+
+// UpdateUserList Обновление списка пользователей на сервере.
+func (connection *IrbisConnection) UpdateUserList(users []UserInfo) {
+	// TODO implement
 }
 
 //===================================================================
@@ -1199,4 +1419,68 @@ func (connection *IrbisConnection) WriteRecord(record *MarcRecord) int {
 	}
 
 	return response.ReturnCode
+}
+
+//===================================================================
+
+// WriteRecords Сохранение нескольких записей на сервере
+// (могут относиться к разным базам).
+func (connection *IrbisConnection) WriteRecords(records []MarcRecord) bool {
+	if !connection.Connected || len(records) == 0 {
+		return false
+	}
+
+	if len(records) == 1 {
+		return connection.WriteRecord(&records[0]) != 0
+	}
+
+	query := NewClientQuery(connection, "6")
+	query.Add(0).NewLine()
+	query.Add(1).NewLine()
+	for i := range records {
+		record := &records[i]
+		database := PickOne(record.Database, connection.Database)
+		query.AddUtf(database)
+		query.AddUtf(IrbisDelimiter)
+		query.AddUtf(record.Encode(IrbisDelimiter))
+		query.NewLine()
+	}
+
+	response := connection.Execute(query)
+	if response == nil {
+		return false
+	}
+
+	response.GetReturnCode()
+
+	lines := response.ReadRemainingUtfLines()
+	for i := 0; i < len(records); i++ {
+		text := lines[i]
+		lines := IrbisToLines(text)
+		record := &records[i]
+		record.Clear()
+		record.Decode(lines)
+		record.Database = PickOne(record.Database, connection.Database)
+	}
+
+	return true
+}
+
+//===================================================================
+
+// WriteTextFile Сохранение текстового файла на сервере.
+func (connection *IrbisConnection) WriteTextFile(specification, text string) bool {
+	if !connection.Connected {
+		return false
+	}
+
+	query := NewClientQuery(connection, "L")
+	query.AddAnsi("&").AddAnsi(specification).AddAnsi("&").AddAnsi(DosToIrbis(text)).NewLine()
+
+	response := connection.Execute(query)
+	if response == nil {
+		return false
+	}
+
+	return true
 }

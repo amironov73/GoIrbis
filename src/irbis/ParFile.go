@@ -7,39 +7,17 @@ import (
 
 // ParFile PAR-файл -- содержит пути к файлам базы данных ИРБИС.
 type ParFile struct {
-	// Xrf Путь к файлу XRF.
-	Xrf string
-
-	// Mst Путь к файлу MST.
-	Mst string
-
-	// Cnt Путь к файлу CNT.
-	Cnt string
-
-	// N01 Путь к файлу N01.
-	N01 string
-
-	// N02 В ИРБИС64 не используется.
-	N02 string
-
-	// L01 Путь к файлу L01.
-	L01 string
-
-	// L02 В ИРБИС64 не используется.
-	L02 string
-
-	// Ifp Путь к файлу IFP.
-	Ifp string
-
-	// Any Путь к файлу ANY.
-	Any string
-
-	// Pft Путь к PFT-файлам.
-	Pft string
-
-	// Ext Расположение внешних объектов (поле 951).
-	// Параметр появился в версии 2012.
-	Ext string
+	Xrf string // Xrf Путь к файлу XRF.
+	Mst string // Mst Путь к файлу MST.
+	Cnt string // Cnt Путь к файлу CNT.
+	N01 string // N01 Путь к файлу N01.
+	N02 string // N02 В ИРБИС64 не используется.
+	L01 string // L01 Путь к файлу L01.
+	L02 string // L02 В ИРБИС64 не используется.
+	Ifp string // Ifp Путь к файлу IFP.
+	Any string // Any Путь к файлу ANY.
+	Pft string // Pft Путь к PFT-файлам.
+	Ext string // Ext Расположение внешних объектов (поле 951). Параметр появился в версии 2012.
 }
 
 func NewParFile(mst string) *ParFile {

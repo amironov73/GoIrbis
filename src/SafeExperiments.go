@@ -94,4 +94,12 @@ func main() {
 	optFile := connection.ReadOptFile("3.IBIS.WS31.OPT")
 	fmt.Println(optFile)
 
+	records := connection.ReadRecords([]int{1, 2, 3})
+	fmt.Println(records)
+
+	tree := connection.ReadTreeFile("3.IBIS.II.TRE")
+	fmt.Println(tree)
+
+	single := connection.SearchSingleRecord(`"I=65.304.13-772296"`)
+	fmt.Println(single)
 }

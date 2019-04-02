@@ -127,6 +127,10 @@ func prepareFormat(text string) string {
 	return result.String()
 }
 
+func DosToIrbis(text string) string {
+	return strings.ReplaceAll(text, "\n", IrbisDelimiter)
+}
+
 func IrbisToDos(text string) string {
 	return strings.ReplaceAll(text, IrbisDelimiter, "\n")
 }
@@ -140,6 +144,38 @@ func LinesToIrbis(lines []string) string {
 	for _, line := range lines {
 		result.WriteString(line)
 		result.WriteString(IrbisDelimiter)
+	}
+
+	return result.String()
+}
+
+func LeftPad(s string, n int) string {
+	delta := n - len(s)
+	if delta <= 0 {
+		return s
+	}
+
+	result := strings.Builder{}
+	result.Grow(n)
+	for i := 0; i < delta; i++ {
+		result.WriteRune(' ')
+	}
+	result.WriteString(s)
+
+	return result.String()
+}
+
+func RightPad(s string, n int) string {
+	delta := n - len(s)
+	if delta <= 0 {
+		return s
+	}
+
+	result := strings.Builder{}
+	result.Grow(n)
+	result.WriteString(s)
+	for i := 0; i < delta; i++ {
+		result.WriteRune(' ')
 	}
 
 	return result.String()

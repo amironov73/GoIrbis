@@ -22,24 +22,24 @@ type MarcRecord struct {
 	Status int
 
 	// Fields Поля записи.
-	Fields []RecordField
+	Fields []*RecordField
 }
 
 // NewMarcRecord Конструктор записи.
 func NewMarcRecord() *MarcRecord {
-	return &MarcRecord{}
+	return new(MarcRecord)
 }
 
 // Add Добавление поля в запись.
 func (record *MarcRecord) Add(tag int, value string) *RecordField {
 	field := NewRecordField(tag, value)
-	record.Fields = append(record.Fields, *field)
-	return &record.Fields[len(record.Fields)-1]
+	record.Fields = append(record.Fields, field)
+	return field
 }
 
 // Clear Очистка записи (удаление всех полей).
 func (record *MarcRecord) Clear() {
-	record.Fields = []RecordField{}
+	record.Fields = []*RecordField{}
 }
 
 // Decode Декодирование записи из протокольного представления.
@@ -53,7 +53,7 @@ func (record *MarcRecord) Decode(lines []string) {
 	for i := 2; i < length; i++ {
 		line := lines[i]
 		if len(line) != 0 {
-			field := RecordField{}
+			field := new(RecordField)
 			field.Decode(line)
 			record.Fields = append(record.Fields, field)
 		}
@@ -70,8 +70,7 @@ func (record *MarcRecord) Encode(delimiter string) string {
 	result.WriteString("0#")
 	result.WriteString(strconv.Itoa(record.Version))
 	result.WriteString(delimiter)
-	for i := range record.Fields {
-		field := &record.Fields[i]
+	for _, field := range record.Fields {
 		result.WriteString(field.Encode())
 		result.WriteString(delimiter)
 	}
@@ -82,8 +81,7 @@ func (record *MarcRecord) Encode(delimiter string) string {
 // FM Получение значения поля с указанной меткой.
 // Если поле не найдено, возвращается пустая строка.
 func (record *MarcRecord) FM(tag int) string {
-	for i := range record.Fields {
-		field := &record.Fields[i]
+	for _, field := range record.Fields {
 		if field.Tag == tag {
 			return field.Value
 		}
@@ -96,11 +94,9 @@ func (record *MarcRecord) FM(tag int) string {
 // в поле с указанной меткой.
 // Если поле или подполе не найдено, возвращается пустая строка.
 func (record *MarcRecord) FSM(tag int, code rune) string {
-	for i := range record.Fields {
-		field := &record.Fields[i]
+	for _, field := range record.Fields {
 		if field.Tag == tag {
-			for j := range field.Subfields {
-				subfield := &field.Subfields[j]
+			for _, subfield := range field.Subfields {
 				if SameRune(subfield.Code, code) {
 					return subfield.Value
 				}
@@ -113,8 +109,7 @@ func (record *MarcRecord) FSM(tag int, code rune) string {
 
 // FMA Получение слайса полей с указанной меткой.
 func (record *MarcRecord) FMA(tag int) (result []string) {
-	for i := range record.Fields {
-		field := &record.Fields[i]
+	for _, field := range record.Fields {
 		if field.Tag == tag && field.Value != "" {
 			result = append(result, field.Value)
 		}
@@ -126,11 +121,9 @@ func (record *MarcRecord) FMA(tag int) (result []string) {
 // FSMA Получение слайса подполей с указанным кодом
 // в полях с указанной меткой.
 func (record *MarcRecord) FSMA(tag int, code rune) (result []string) {
-	for i := range record.Fields {
-		field := &record.Fields[i]
+	for _, field := range record.Fields {
 		if field.Tag == tag {
-			for j := range field.Subfields {
-				subfield := &field.Subfields[j]
+			for _, subfield := range field.Subfields {
 				if SameRune(subfield.Code, code) && subfield.Value != "" {
 					result = append(result, subfield.Value)
 				}
@@ -144,8 +137,7 @@ func (record *MarcRecord) FSMA(tag int, code rune) (result []string) {
 // GetField Получение поля с указанной меткой с учетом повторения.
 // Если поле не найдено, возвращается nil.
 func (record *MarcRecord) GetField(tag, occurrence int) *RecordField {
-	for i := range record.Fields {
-		field := &record.Fields[i]
+	for _, field := range record.Fields {
 		if field.Tag == tag {
 			if occurrence == 0 {
 				return field
@@ -159,8 +151,7 @@ func (record *MarcRecord) GetField(tag, occurrence int) *RecordField {
 
 // GetFields Получение слайса полей с указанной меткой.
 func (record *MarcRecord) GetFields(tag int) (result []*RecordField) {
-	for i := range record.Fields {
-		field := &record.Fields[i]
+	for _, field := range record.Fields {
 		if field.Tag == tag {
 			result = append(result, field)
 		}
@@ -172,8 +163,7 @@ func (record *MarcRecord) GetFields(tag int) (result []*RecordField) {
 // GetFirstField Получение первого вхождения поля с указанной меткой.
 // Если такого поля нет, возвращается nil.
 func (record *MarcRecord) GetFirstField(tag int) *RecordField {
-	for i := range record.Fields {
-		field := &record.Fields[i]
+	for _, field := range record.Fields {
 		if field.Tag == tag {
 			return field
 		}

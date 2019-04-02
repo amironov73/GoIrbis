@@ -7,32 +7,15 @@ import (
 
 // DatabaseInfo Информация о базе данных ИРБИС.
 type DatabaseInfo struct {
-	// Name Имя базы данных.
-	Name string
-
-	// Description Описание базы данных в произвольной форме.
-	Description string
-
-	// MaxMfn Максимальный MFN.
-	MaxMfn int
-
-	// LogicallyDeletedRecords Логически удаленные записи.
-	LogicallyDeletedRecords []int
-
-	// PhysicallyDeletedRecords Физически удаленные записи.
-	PhysicallyDeletedRecords []int
-
-	// NonActualizedRecords Неактуализированные записи.
-	NonActualizedRecords []int
-
-	// LockedRecords Заблокированные записи.
-	LockedRecords []int
-
-	// DatabaseLocked Признак блокировки базы данных в целом.
-	DatabaseLocked bool
-
-	// ReadOnly База только для чтения
-	ReadOnly bool
+	Name                     string // Name Имя базы данных.
+	Description              string // Description Описание базы данных в произвольной форме.
+	MaxMfn                   int    // MaxMfn Максимальный MFN.
+	LogicallyDeletedRecords  []int  // LogicallyDeletedRecords Логически удаленные записи.
+	PhysicallyDeletedRecords []int  // PhysicallyDeletedRecords Физически удаленные записи.
+	NonActualizedRecords     []int  // NonActualizedRecords Неактуализированные записи.
+	LockedRecords            []int  // LockedRecords Заблокированные записи.
+	DatabaseLocked           bool   // DatabaseLocked Признак блокировки базы данных в целом.
+	ReadOnly                 bool   // ReadOnly База только для чтения
 }
 
 func parseLine(line string) (result []int) {
@@ -58,8 +41,7 @@ func (db *DatabaseInfo) Parse(lines []string) {
 }
 
 func ParseMenu(menu *MenuFile) (result []DatabaseInfo) {
-	for i := range menu.Entries {
-		entry := &menu.Entries[i]
+	for _, entry := range menu.Entries {
 		name := entry.Code
 		if name == "*****" {
 			break

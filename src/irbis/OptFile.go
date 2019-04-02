@@ -27,9 +27,8 @@ func (opt *OptLine) Parse(text string) bool {
 	return true
 }
 
-func (opt *OptLine) String() string {
-	// TODO implement properly
-	return opt.Pattern + " " + opt.Worksheet
+func (opt *OptLine) String(width int) string {
+	return RightPad(opt.Pattern, width) + " " + opt.Worksheet
 }
 
 // OptFile OPT-файл -- файл оптимизации рабочих листов и форматов отображения.
@@ -41,7 +40,7 @@ type OptFile struct {
 	WorksheetTag int
 
 	// Lines Строки с паттернами.
-	Lines []OptLine
+	Lines []*OptLine
 }
 
 func NewOptFile() *OptFile {
@@ -52,7 +51,7 @@ func NewOptFile() *OptFile {
 	return result
 }
 
-// GetWorksheet Поолучение рабочего листа записи.
+// GetWorksheet Получение рабочего листа записи.
 func (opt *OptFile) GetWorksheet(record *MarcRecord) string {
 	return record.FM(opt.WorksheetTag)
 }
@@ -69,7 +68,7 @@ func (opt *OptFile) Parse(lines []string) {
 			break
 		}
 
-		item := OptLine{}
+		item := new(OptLine)
 		if item.Parse(line) {
 			opt.Lines = append(opt.Lines, item)
 		}
@@ -84,7 +83,7 @@ func (opt *OptFile) String() string {
 	result.WriteString("\n")
 
 	for _, line := range opt.Lines {
-		result.WriteString(line.String())
+		result.WriteString(line.String(opt.WorksheetLength))
 		result.WriteString("\n")
 	}
 

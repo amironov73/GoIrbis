@@ -67,6 +67,8 @@ func (tree *TreeFile) AddRoot(value string) *TreeNode {
 }
 
 func (tree *TreeFile) Parse(lines []string) {
+	// TODO implement properly
+
 	if len(lines) == 0 {
 		return
 	}

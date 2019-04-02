@@ -15,7 +15,7 @@ type RecordField struct {
 	Value string
 
 	// Subfields Подполя.
-	Subfields []SubField
+	Subfields []*SubField
 }
 
 // NewRecordField Конструктор: создает поле с указанными меткой и значением.
@@ -26,14 +26,14 @@ func NewRecordField(tag int, value string) *RecordField {
 // Add Добавление подполя с указанными кодом и значением.
 func (field *RecordField) Add(code rune, value string) *RecordField {
 	subfield := NewSubField(code, value)
-	field.Subfields = append(field.Subfields, *subfield)
+	field.Subfields = append(field.Subfields, subfield)
 
 	return field
 }
 
 // Clear Очищает поле (удаляет значение и все подполя).
 func (field *RecordField) Clear() *RecordField {
-	field.Subfields = []SubField{}
+	field.Subfields = []*SubField{}
 	return field
 }
 
@@ -49,7 +49,7 @@ func (field *RecordField) Decode(text string) {
 	}
 	for _, one := range all {
 		if len(one) != 0 {
-			subfield := SubField{}
+			subfield := new(SubField)
 			subfield.Decode(one)
 			field.Subfields = append(field.Subfields, subfield)
 		}
@@ -62,8 +62,7 @@ func (field *RecordField) Encode() string {
 	result.WriteString(strconv.Itoa(field.Tag))
 	result.WriteRune('#')
 	result.WriteString(field.Value)
-	for i := range field.Subfields {
-		subfield := &field.Subfields[i]
+	for _, subfield := range field.Subfields {
 		result.WriteString(subfield.String())
 	}
 
@@ -73,8 +72,7 @@ func (field *RecordField) Encode() string {
 // GetFirstSubField Возвращает первое вхождение подполя с указанным кодом.
 // Если такого подполя нет, возвращается nil.
 func (field *RecordField) GetFirstSubField(code rune) *SubField {
-	for i := range field.Subfields {
-		candidate := &field.Subfields[i]
+	for _, candidate := range field.Subfields {
 		if SameRune(candidate.Code, code) {
 			return candidate
 		}
@@ -86,8 +84,7 @@ func (field *RecordField) GetFirstSubField(code rune) *SubField {
 // GetFirstSubFieldValue Возвращает значение первого вхождения
 // подполя с указанным кодом, либо пустую строку, если такого подполя нет.
 func (field *RecordField) GetFirstSubFieldValue(code rune) string {
-	for i := range field.Subfields {
-		candidate := &field.Subfields[i]
+	for _, candidate := range field.Subfields {
 		if SameRune(candidate.Code, code) {
 			return candidate.Value
 		}

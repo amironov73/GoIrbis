@@ -1,10 +1,20 @@
 package irbis
 
-import "strings"
+import (
+	"strings"
+)
 
+// MenuEntry представляет собой пару строк в MNU-файле.
 type MenuEntry struct {
-	Code    string
-	Comment string
+	Code    string // Условный код
+	Comment string // Комментарий к коду
+}
+
+func NewMenuEntry(code, comment string) *MenuEntry {
+	result := new(MenuEntry)
+	result.Code = code
+	result.Comment = comment
+	return result
 }
 
 func (entry *MenuEntry) String() string {
@@ -12,17 +22,17 @@ func (entry *MenuEntry) String() string {
 }
 
 type MenuFile struct {
-	Entries []MenuEntry
+	Entries []*MenuEntry
 }
 
 func (menu *MenuFile) Add(code, comment string) *MenuFile {
-	entry := MenuEntry{code, comment}
+	entry := NewMenuEntry(code, comment)
 	menu.Entries = append(menu.Entries, entry)
 	return menu
 }
 
 func (menu *MenuFile) Clear() *MenuFile {
-	menu.Entries = []MenuEntry{}
+	menu.Entries = []*MenuEntry{}
 	return menu
 }
 
@@ -31,24 +41,21 @@ func (menu *MenuFile) GetEntry(code string) *MenuEntry {
 		return nil
 	}
 
-	for i := range menu.Entries {
-		entry := &menu.Entries[i]
+	for _, entry := range menu.Entries {
 		if SameString(entry.Code, code) {
 			return entry
 		}
 	}
 
 	code = strings.TrimSpace(code)
-	for i := range menu.Entries {
-		entry := &menu.Entries[i]
+	for _, entry := range menu.Entries {
 		if SameString(entry.Code, code) {
 			return entry
 		}
 	}
 
 	code = strings.Trim(code, "-=:")
-	for i := range menu.Entries {
-		entry := &menu.Entries[i]
+	for _, entry := range menu.Entries {
 		if SameString(entry.Code, code) {
 			return entry
 		}
@@ -66,7 +73,7 @@ func (menu *MenuFile) GetValue(code, defaultValue string) string {
 }
 
 func (menu *MenuFile) Parse(lines []string) {
-	menu.Entries = make([]MenuEntry, 0, len(lines)/2)
+	menu.Entries = make([]*MenuEntry, 0, len(lines)/2)
 	length := len(lines)
 	for i := 0; i < length; i += 2 {
 		code := lines[i]
@@ -74,7 +81,7 @@ func (menu *MenuFile) Parse(lines []string) {
 			break
 		}
 		comment := lines[i+1]
-		entry := MenuEntry{code, comment}
+		entry := NewMenuEntry(code, comment)
 		menu.Entries = append(menu.Entries, entry)
 	}
 }
