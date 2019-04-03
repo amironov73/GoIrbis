@@ -1,6 +1,9 @@
 package irbis
 
-import "testing"
+import ( 
+	"fmt"
+	"testing"
+)
 
 func assertEqual(t *testing.T, a interface{}, b interface{}, message string) {
   if a == b {

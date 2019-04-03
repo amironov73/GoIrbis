@@ -49,7 +49,7 @@ func main() {
 
 	mfn := 123
 	format := "'Ἀριστοτέλης: ', v200^a"
-	formatted = connection.FormatMfnUtf(format, mfn)
+	formatted = connection.FormatMfn(format, mfn)
 	fmt.Println(formatted)
 
 	manyFormatted := connection.FormatRecords("@brief", []int{1, 2, 3})

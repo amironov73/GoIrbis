@@ -285,31 +285,10 @@ func (connection *IrbisConnection) FormatMfn(format string, mfn int) string {
 
 	query := NewClientQuery(connection, "G")
 	query.AddAnsi(connection.Database).NewLine()
-	prepared := prepareFormat(format)
-	query.AddAnsi(prepared).NewLine()
-	query.Add(1).NewLine()
-	query.Add(mfn).NewLine()
-	response := connection.Execute(query)
-	if response == nil || !response.CheckReturnCode() {
-		return ""
-	}
-	result := strings.TrimSpace(response.ReadRemainingUtfText())
-	return result
-}
-
-//===================================================================
-
-// FormatMfnUtf Форматирование записи с указанным MFN.
-// Формат может содержать любые символы Unicode.
-func (connection *IrbisConnection) FormatMfnUtf(format string, mfn int) string {
-	if !connection.Connected {
+	if !query.AddFormat(format) {
 		return ""
 	}
 
-	query := NewClientQuery(connection, "G")
-	query.AddAnsi(connection.Database).NewLine()
-	prepared := "!" + prepareFormat(format)
-	query.AddUtf(prepared).NewLine()
 	query.Add(1).NewLine()
 	query.Add(mfn).NewLine()
 	response := connection.Execute(query)
@@ -330,8 +309,10 @@ func (connection *IrbisConnection) FormatRecord(format string, record *MarcRecor
 	database := PickOne(record.Database, connection.Database)
 	query := NewClientQuery(connection, "G")
 	query.AddAnsi(database).NewLine()
-	prepared := prepareFormat(format)
-	query.AddAnsi(prepared).NewLine()
+	if !query.AddFormat(format) {
+		return ""
+	}
+
 	query.Add(-2).NewLine()
 	query.AddUtf(record.Encode(IrbisDelimiter))
 	response := connection.Execute(query)
@@ -352,8 +333,10 @@ func (connection *IrbisConnection) FormatRecords(format string, list []int) (res
 
 	query := NewClientQuery(connection, "G")
 	query.AddAnsi(connection.Database).NewLine()
-	prepared := prepareFormat(format)
-	query.AddAnsi(prepared).NewLine()
+	if !query.AddFormat(format) {
+		return make([]string, len(list))
+	}
+
 	query.Add(len(list)).NewLine()
 	for _, mfn := range list {
 		query.Add(mfn).NewLine()
@@ -821,7 +804,7 @@ func (connection *IrbisConnection) ReadPostings(parameters *PostingParameters) (
 	query.Add(parameters.NumberOfPostings).NewLine()
 	query.Add(parameters.FirstPosting).NewLine()
 	prepared := prepareFormat(parameters.Format)
-	query.AddAnsi(prepared).NewLine()
+	query.AddUtf("!" + prepared).NewLine()
 	if len(parameters.ListOfTerms) == 0 {
 		query.AddUtf(parameters.Term).NewLine()
 	} else {
@@ -1205,8 +1188,7 @@ func (connection *IrbisConnection) SearchEx(parameters *SearchParameters) []Foun
 	query.AddUtf(parameters.Expression).NewLine()
 	query.Add(parameters.NumberOfRecords).NewLine()
 	query.Add(parameters.FirstRecord).NewLine()
-	prepared := prepareFormat(parameters.Format)
-	query.AddAnsi(prepared).NewLine()
+	query.AddFormat(parameters.Format)
 	query.Add(parameters.MinMfn).NewLine()
 	query.Add(parameters.MaxMfn).NewLine()
 	query.AddAnsi(parameters.Sequential).NewLine()

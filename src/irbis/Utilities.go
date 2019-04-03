@@ -204,6 +204,32 @@ func SplitLines(text string) []string {
 	return strings.Split(text, "\n")
 }
 
+func trimLeft(text string) string {
+	index := 0
+	length := len(text)
+	for index < length {
+		if text[index] != ' ' {
+			break
+		}
+		index++
+	}
+
+	return text[index:]
+}
+
+func trimRight(text string) string {
+	length := len(text)
+	index := length - 1
+	for index >= 0 {
+		if text[index] != ' ' {
+			break
+		}
+		index--
+	}
+
+	return text[:index]
+}
+
 func boolToInt(value bool) int {
 	if value {
 		return 1

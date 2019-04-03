@@ -6,6 +6,7 @@ SET OUTPUT=%CD%\bin
 
 rem %GOEXECUTABLE% get -u -v golang.org/x/text/encoding/charmap
 call :COMPILE SafeExperiments
+call :COMPILE DirectExperiments
 
 goto :DONE
 

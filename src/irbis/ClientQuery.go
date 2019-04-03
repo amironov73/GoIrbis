@@ -39,6 +39,25 @@ func (query *ClientQuery) AddAnsi(text string) *ClientQuery {
 	return query
 }
 
+func (query *ClientQuery) AddFormat(format string) bool {
+	if len(format) == 0 {
+		query.NewLine()
+		return false
+	}
+
+	prepared := prepareFormat(trimLeft(format))
+
+	if format[0] == '@' {
+		query.AddAnsi(prepared)
+	} else if format[0] == '!' {
+		query.AddUtf(prepared)
+	} else {
+		query.AddUtf("!" + prepared)
+	}
+	query.NewLine()
+	return true
+}
+
 // AddUtf добавляет в запрос строку в кодировке UTF-8.
 func (query *ClientQuery) AddUtf(text string) *ClientQuery {
 	buf := toUtf8(text)
