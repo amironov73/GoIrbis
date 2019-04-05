@@ -1,26 +1,29 @@
 package main
 
 import (
+	"./irbis"
 	"fmt"
-	"irbis"
 )
 
-func readAndShowXrfRecord(xrf *irbis.XrfFile, mfn int) {
-	record, err := xrf.ReadRecord(mfn)
+func readAndShowRecord(access *irbis.DirectAccess, mfn int) {
+	record, err := access.ReadRecord(mfn)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(mfn, record, record.Offset())
+
+	fmt.Println(record.String())
 }
 
 func main() {
-	xrf, err := irbis.OpenXrfFile("data/irbis64/datai/ibis/ibis.xrf")
+	access, err := irbis.OpenDatabase("data/irbis64/datai/ibis/ibis")
 	if err != nil {
 		panic(err)
 	}
-	defer xrf.Close()
+	defer access.Close()
 
-	for mfn := 1; mfn < 10; mfn++ {
-		readAndShowXrfRecord(xrf, mfn)
+	fmt.Println("Max MFN=", access.GetMaxMfn())
+
+	for mfn := 1; mfn <= 10; mfn++ {
+		readAndShowRecord(access, mfn)
 	}
 }

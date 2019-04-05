@@ -15,10 +15,12 @@ type XrfRecord struct {
 	Status int32
 }
 
+// XrfFile - обёртка над XRF-файлом.
 type XrfFile struct {
 	file *os.File
 }
 
+// OpenXrfFile открывает файл на чтение.
 func OpenXrfFile(filename string) (result *XrfFile, err error) {
 	var file *os.File
 	file, err = os.Open(filename)
@@ -32,6 +34,7 @@ func OpenXrfFile(filename string) (result *XrfFile, err error) {
 	return result, nil
 }
 
+// Close закрывает файл.
 func (xrf *XrfFile) Close() {
 	_ = xrf.file.Close()
 }

@@ -39,6 +39,8 @@ func (query *ClientQuery) AddAnsi(text string) *ClientQuery {
 	return query
 }
 
+// AddFormat добавляет строку формата, предварительно подготовив её.
+// Также добавляется перевод строки.
 func (query *ClientQuery) AddFormat(format string) bool {
 	if len(format) == 0 {
 		query.NewLine()

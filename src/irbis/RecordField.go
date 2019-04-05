@@ -37,11 +37,8 @@ func (field *RecordField) Clear() *RecordField {
 	return field
 }
 
-// Decode Декодирование поля из протокольного представления.
-func (field *RecordField) Decode(text string) {
-	parts := strings.SplitN(text, "#", 2)
-	field.Tag, _ = strconv.Atoi(parts[0])
-	body := parts[1]
+// DecodeBody декодирует только текст поля.
+func (field *RecordField) DecodeBody(body string) {
 	all := strings.Split(body, "^")
 	if body[0] != '^' {
 		field.Value = all[0]
@@ -54,6 +51,14 @@ func (field *RecordField) Decode(text string) {
 			field.Subfields = append(field.Subfields, subfield)
 		}
 	}
+}
+
+// Decode Декодирование поля из протокольного представления.
+func (field *RecordField) Decode(text string) {
+	parts := strings.SplitN(text, "#", 2)
+	field.Tag, _ = strconv.Atoi(parts[0])
+	body := parts[1]
+	field.DecodeBody(body)
 }
 
 // Encode Кодирование поля в протокольное представление.
