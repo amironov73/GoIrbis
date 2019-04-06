@@ -1,15 +1,48 @@
 package irbis
 
-import "os"
+import (
+	"encoding/binary"
+	"io"
+	"os"
+)
 
+const InvertedBlockSize = 2050048
 const NodeLength = 2048
 const MaxTermSize = 255
+const NodeRecordSize = 2048
 
 type TermLink struct {
 	Mfn        int32
 	Tag        int32
 	Occurrence int32
 	Index      int32
+}
+
+// NodeItem
+// Справочник в N01/L01 является таблицей, определяющей
+// поисковый термин. Каждый ключ переменной длины, который
+// есть в записи, представлен в справочнике одним входом,
+// формат которого описывает данная структура.
+type NodeItem struct {
+	Length     int16
+	KeyOffset  int16
+	LowOffset  int32
+	HighOffset int32
+}
+
+// NodeLeader - лидер записи в L01/N01-файле.
+type NodeLeader struct {
+	Number     int32
+	Previous   int32
+	Next       int32
+	TermCount  int32
+	FreeOffset int32
+}
+
+// NodeRecord - запись в L01/N01-файлах.
+type NodeRecord struct {
+	Leader NodeLeader
+	Items  []NodeItem
 }
 
 type IfpControlRecord struct {
@@ -33,6 +66,7 @@ type IfpRecord struct {
 	Links  []TermLink
 }
 
+// IfpFile - обёртка для инвертированного файла.
 type IfpFile struct {
 	ifpFile *os.File
 	l01File *os.File
@@ -75,4 +109,20 @@ func (ifp *IfpFile) Close() {
 	_ = ifp.ifpFile.Close()
 	_ = ifp.l01File.Close()
 	_ = ifp.n01File.Close()
+}
+
+func (ifp *IfpFile) readNode(leaf bool, file *os.File, offset int64) (result *NodeRecord) {
+	_, err := file.Seek(offset, io.SeekStart)
+	if err != nil {
+		panic(err)
+	}
+
+	leader := new(NodeLeader)
+	err = binary.Read(file, binary.BigEndian, &leader)
+	if err != nil {
+		panic(err)
+	}
+
+	result = new(NodeRecord)
+	return
 }

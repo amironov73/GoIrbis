@@ -81,7 +81,7 @@ func (response *ServerResponse) GetReturnCode() int {
 
 func (response *ServerResponse) ReadAnsi() string {
 	line := response.GetLine()
-	result := fromWin1251(line)
+	result := FromAnsi(line)
 	return result
 }
 
@@ -101,7 +101,7 @@ func (response *ServerResponse) ReadRemainingAnsiLines() []string {
 
 func (response *ServerResponse) ReadRemainingAnsiText() string {
 	line, _ := ioutil.ReadAll(response.reader)
-	result := fromWin1251(line)
+	result := FromAnsi(line)
 
 	return result
 }
@@ -118,7 +118,7 @@ func (response *ServerResponse) ReadRemainingUtfLines() []string {
 func (response *ServerResponse) ReadRemainingUtfText() string {
 	line, _ := ioutil.ReadAll(response.reader)
 	result := fromUtf8(line)
-	
+
 	return result
 }
 

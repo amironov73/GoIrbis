@@ -1,7 +1,8 @@
 package irbis
 
 import (
-	//	"golang.org/x/text/encoding/charmap"
+	"encoding/binary"
+	"io"
 	"strings"
 	"unicode"
 )
@@ -19,21 +20,12 @@ func contains(s []int, item int) bool {
 	return false
 }
 
-func toWin1251(text string) []byte {
+func ToAnsi(text string) []byte {
 	return cp1251FromUnicode(text)
-
-	//encoder := charmap.Windows1251.NewEncoder()
-	//result, _ := encoder.Bytes([]byte(text))
-	//return result
 }
 
-func fromWin1251(buffer []byte) string {
+func FromAnsi(buffer []byte) string {
 	return cp1251ToUnicode(buffer)
-
-	//decoder := charmap.Windows1251.NewDecoder()
-	//temp, _ := decoder.Bytes(buffer)
-	//result := string(temp)
-	//return result
 }
 
 func toUtf8(text string) []byte {
@@ -189,6 +181,43 @@ func PickOne(lines ...string) string {
 	}
 
 	return ""
+}
+
+func ParseInt32(buffer []byte) (result int) {
+	for _, b := range buffer {
+		result = result*10 + int(b-'0')
+	}
+
+	return
+}
+
+// ReadInt16 считывает из потока короткое целое в сетевом формате ИРБИС64.
+func ReadInt16(reader io.Reader) (result int16) {
+	if err := binary.Read(reader, binary.BigEndian, &result); err != nil {
+		panic(err)
+	}
+	return
+}
+
+// ReadInt32 считывает из потока целое число в сетевом формате ИРБИС64.
+func ReadInt32(reader io.Reader) (result int32) {
+	if err := binary.Read(reader, binary.BigEndian, &result); err != nil {
+		panic(err)
+	}
+	return
+}
+
+// ReadInt64 считывает из потока длинное целое в сетевом формате ИРБИС64.
+func ReadInt64(reader io.Reader) (result int64) {
+	var low, high int32
+	if err := binary.Read(reader, binary.BigEndian, &low); err != nil {
+		panic(err)
+	}
+	if err := binary.Read(reader, binary.BigEndian, &high); err != nil {
+		panic(err)
+	}
+	result = (int64(high) << 32) + int64(low)
+	return
 }
 
 func SameRune(left, right rune) bool {
