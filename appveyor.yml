@@ -14,7 +14,6 @@ install:
 
 build_script:
   - compile.cmd
-  - compile_for_linux.cmd
 
 test_script:
   - run_tests.cmd
