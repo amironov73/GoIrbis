@@ -4,6 +4,7 @@ package irbis
 type DirectAccess struct {
 	mst      *MstFile
 	xrf      *XrfFile
+	ifp      *IfpFile
 	filename string
 }
 
@@ -22,10 +23,19 @@ func OpenDatabase(filename string) (result *DirectAccess, err error) {
 		return
 	}
 
+	var ifp *IfpFile
+	ifp, err = OpenIfpFile(filename)
+	if err != nil {
+		mst.Close()
+		xrf.Close()
+		return
+	}
+
 	result = new(DirectAccess)
 	result.filename = filename
 	result.mst = mst
 	result.xrf = xrf
+	result.ifp = ifp
 
 	return
 }
@@ -34,6 +44,7 @@ func OpenDatabase(filename string) (result *DirectAccess, err error) {
 func (access *DirectAccess) Close() {
 	access.mst.Close()
 	access.xrf.Close()
+	access.ifp.Close()
 }
 
 // GetMaxMfn получает максимальный MFN для данной базы.

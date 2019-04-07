@@ -15,8 +15,7 @@ install:
 build_script:
   - compile.cmd
 
-test_script:
-  - run_tests.cmd
+test: off
 
 artifacts:
   - path: bin
