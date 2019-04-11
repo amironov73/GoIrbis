@@ -732,7 +732,7 @@ func (connection *IrbisConnection) ReadIniFile(specification string) *IniFile {
 	}
 
 	lines := connection.ReadTextLines(specification)
-	if lines == nil || len(lines) == 0 {
+	if len(lines) == 0 {
 		return nil
 	}
 

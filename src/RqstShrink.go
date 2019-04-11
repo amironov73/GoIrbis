@@ -46,6 +46,7 @@ func main() {
 	println("Good records loaded:", len(goodRecords))
 	for i := range goodRecords {
 		record := &goodRecords[i]
+                record.Mfn = 0
 		record.Version = 0
 		record.Mfn = 0
 	}

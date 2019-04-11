@@ -35,7 +35,9 @@ func (query *ClientQuery) Add(value int) *ClientQuery {
 // AddAnsi добавляет в запрос строку в кодировке ANSI.
 func (query *ClientQuery) AddAnsi(text string) *ClientQuery {
 	buf := ToAnsi(text)
-	query.buffer.Write(buf)
+	if _, err := query.buffer.Write(buf); err != nil {
+		panic(err)
+	}
 	return query
 }
 
