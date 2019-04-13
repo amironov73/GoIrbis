@@ -11,7 +11,7 @@ type ClientQuery struct {
 }
 
 // NewClientQuery формирует заголовок клиентского запроса.
-func NewClientQuery(connection *IrbisConnection, command string) *ClientQuery {
+func NewClientQuery(connection *Connection, command string) *ClientQuery {
 	result := ClientQuery{}
 	result.buffer = bytes.NewBuffer(nil)
 	result.AddAnsi(command).NewLine()
@@ -35,9 +35,7 @@ func (query *ClientQuery) Add(value int) *ClientQuery {
 // AddAnsi добавляет в запрос строку в кодировке ANSI.
 func (query *ClientQuery) AddAnsi(text string) *ClientQuery {
 	buf := ToAnsi(text)
-	if _, err := query.buffer.Write(buf); err != nil {
-		panic(err)
-	}
+	query.buffer.Write(buf)
 	return query
 }
 

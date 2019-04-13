@@ -3,13 +3,12 @@ package irbis
 import (
 	"log"
 	"math/rand"
-	"net"
 	"strconv"
 	"strings"
 )
 
-// IrbisConnection Подключение к серверу ИРБИС64.
-type IrbisConnection struct {
+// Connection Подключение к серверу ИРБИС64.
+type Connection struct {
 	// Host Адрес сервера (можно задавать как my.domain.com,
 	// так и 192.168.1.1).
 	Host string
@@ -50,26 +49,30 @@ type IrbisConnection struct {
 
 	// Ini Серверный INI-файл (становится доступен после подключения).
 	Ini *IniFile
+
+	// socket Сокет.
+	socket ClientSocket
 }
 
 //===================================================================
 
 // NewConnection Конструктор, создает подключение с настройками по умолчанию.
-func NewConnection() *IrbisConnection {
-	result := IrbisConnection{}
+func NewConnection() *Connection {
+	result := new(Connection)
 	result.Host = "127.0.0.1"
 	result.Port = 6666
 	result.Database = "IBIS"
 	result.Workstation = "C"
+	result.socket = NewTcp4ClientSocket(result)
 
-	return &result
+	return result
 }
 
 //===================================================================
 
 // ActualizeDatabase Актуализация всех неактуализированных записей
 // в указанной базе данных.
-func (connection *IrbisConnection) ActualizeDatabase(database string) bool {
+func (connection *Connection) ActualizeDatabase(database string) bool {
 	return connection.ActualizeRecord(database, 0)
 }
 
@@ -77,7 +80,7 @@ func (connection *IrbisConnection) ActualizeDatabase(database string) bool {
 
 // ActualizeRecord Актуализация записи с указанным кодом.
 // Если запись уже актуализирована, ничего не меняется.
-func (connection *IrbisConnection) ActualizeRecord(database string, mfn int) bool {
+func (connection *Connection) ActualizeRecord(database string, mfn int) bool {
 	if !connection.Connected {
 		return false
 	}
@@ -99,7 +102,7 @@ func (connection *IrbisConnection) ActualizeRecord(database string, mfn int) boo
 
 // Connect Подключение к серверу ИРБИС64.
 // Если подключение уже установлено, ничего не меняется.
-func (connection *IrbisConnection) Connect() bool {
+func (connection *Connection) Connect() bool {
 	if connection.Connected {
 		return true
 	}
@@ -137,7 +140,7 @@ AGAIN:
 //===================================================================
 
 // CreateDatabase Создание базы данных.
-func (connection *IrbisConnection) CreateDatabase(database string,
+func (connection *Connection) CreateDatabase(database string,
 	description string, readerAccess bool) bool {
 	if !connection.Connected {
 		return false
@@ -162,7 +165,7 @@ func (connection *IrbisConnection) CreateDatabase(database string,
 //===================================================================
 
 // CreateDictionary Создание словаря в указанной базе данных.
-func (connection *IrbisConnection) CreateDictionary(database string) bool {
+func (connection *Connection) CreateDictionary(database string) bool {
 	if !connection.Connected {
 		return false
 	}
@@ -180,7 +183,7 @@ func (connection *IrbisConnection) CreateDictionary(database string) bool {
 //===================================================================
 
 // DeleteDatabase Удаление указанной базы данных.
-func (connection *IrbisConnection) DeleteDatabase(database string) bool {
+func (connection *Connection) DeleteDatabase(database string) bool {
 	if !connection.Connected {
 		return false
 	}
@@ -198,14 +201,14 @@ func (connection *IrbisConnection) DeleteDatabase(database string) bool {
 //===================================================================
 
 // DeleteFile Удаление на сервере указанного файла.
-func (connection *IrbisConnection) DeleteFile(fileName string) {
+func (connection *Connection) DeleteFile(fileName string) {
 	connection.FormatMfn("&f('+9K"+fileName+"')", 1)
 }
 
 //===================================================================
 
 // DeleteRecord Удаление записи по ее MFN.
-func (connection *IrbisConnection) DeleteRecord(mfn int) {
+func (connection *Connection) DeleteRecord(mfn int) {
 	record := connection.ReadRecord(mfn)
 	if record != nil && !record.IsDeleted() {
 		record.Status |= LOGICALLY_DELETED
@@ -217,7 +220,7 @@ func (connection *IrbisConnection) DeleteRecord(mfn int) {
 
 // Disconnect Отключение от сервера.
 // Если подключение не установлено, ничего не меняется.
-func (connection *IrbisConnection) Disconnect() bool {
+func (connection *Connection) Disconnect() bool {
 	if !connection.Connected {
 		return true
 	}
@@ -233,31 +236,15 @@ func (connection *IrbisConnection) Disconnect() bool {
 
 // Execute Отправка клиентского запроса на сервер
 // и получение ответа от него.
-func (connection *IrbisConnection) Execute(query *ClientQuery) *ServerResponse {
-	address := connection.Host + ":" + strconv.Itoa(connection.Port)
-	socket, err := net.Dial("tcp", address)
-	if err != nil {
-		return nil
-	}
-
-	defer func() { _ = socket.Close() }()
-
-	buffer := query.Encode()
-	_, err = socket.Write(buffer)
-	if err != nil {
-		return nil
-	}
-
-	result := NewServerResponse(socket)
-
-	return result
+func (connection *Connection) Execute(query *ClientQuery) *ServerResponse {
+	return connection.socket.TalkToServer(query)
 }
 
 //===================================================================
 
 // ExecuteAnyCommand Выполнение на сервере произвольной команды
 // с опциональными параметрами в кодировке ANSI.
-func (connection *IrbisConnection) ExecuteAnyCommand(command string, params ...string) bool {
+func (connection *Connection) ExecuteAnyCommand(command string, params ...string) bool {
 	if !connection.Connected {
 		return false
 	}
@@ -278,7 +265,7 @@ func (connection *IrbisConnection) ExecuteAnyCommand(command string, params ...s
 //===================================================================
 
 // FormatMfn Форматирование записи с указанным MFN.
-func (connection *IrbisConnection) FormatMfn(format string, mfn int) string {
+func (connection *Connection) FormatMfn(format string, mfn int) string {
 	if !connection.Connected {
 		return ""
 	}
@@ -302,7 +289,7 @@ func (connection *IrbisConnection) FormatMfn(format string, mfn int) string {
 //===================================================================
 
 // FormatRecord Форматирование записи в клиентском представлении.
-func (connection *IrbisConnection) FormatRecord(format string, record *MarcRecord) string {
+func (connection *Connection) FormatRecord(format string, record *MarcRecord) string {
 	if !connection.Connected {
 		return ""
 	}
@@ -326,7 +313,7 @@ func (connection *IrbisConnection) FormatRecord(format string, record *MarcRecor
 //===================================================================
 
 // FormatRecords Расформатирование нескольких записей.
-func (connection *IrbisConnection) FormatRecords(format string, list []int) (result []string) {
+func (connection *Connection) FormatRecords(format string, list []int) (result []string) {
 	if !connection.Connected || len(list) == 0 {
 		return
 	}
@@ -361,7 +348,7 @@ func (connection *IrbisConnection) FormatRecords(format string, list []int) (res
 //===================================================================
 
 // GetDatabaseInfo Получение информации об указанной базе данных.
-func (connection *IrbisConnection) GetDatabaseInfo(database string) *DatabaseInfo {
+func (connection *Connection) GetDatabaseInfo(database string) *DatabaseInfo {
 	if !connection.Connected {
 		return nil
 	}
@@ -383,7 +370,7 @@ func (connection *IrbisConnection) GetDatabaseInfo(database string) *DatabaseInf
 //===================================================================
 
 // GetMaxMfn Получение максимального MFN для указанной базы данных.
-func (connection *IrbisConnection) GetMaxMfn(database string) int {
+func (connection *Connection) GetMaxMfn(database string) int {
 	if !connection.Connected {
 		return 0
 	}
@@ -402,7 +389,7 @@ func (connection *IrbisConnection) GetMaxMfn(database string) int {
 //===================================================================
 
 // Получение статистики с сервера.
-func (connection *IrbisConnection) GetServerStat() (result ServerStat) {
+func (connection *Connection) GetServerStat() (result ServerStat) {
 	if !connection.Connected {
 		return
 	}
@@ -422,7 +409,7 @@ func (connection *IrbisConnection) GetServerStat() (result ServerStat) {
 //===================================================================
 
 // GetServerVersion Получение версии сервера.
-func (connection *IrbisConnection) GetServerVersion() (result VersionInfo) {
+func (connection *Connection) GetServerVersion() (result VersionInfo) {
 	if !connection.Connected {
 		return
 	}
@@ -441,7 +428,7 @@ func (connection *IrbisConnection) GetServerVersion() (result VersionInfo) {
 //===================================================================
 
 // GetUserList Получение списка пользователей с сервера.
-func (connection *IrbisConnection) GetUserList() (result []UserInfo) {
+func (connection *Connection) GetUserList() (result []UserInfo) {
 	if !connection.Connected {
 		return
 	}
@@ -460,7 +447,7 @@ func (connection *IrbisConnection) GetUserList() (result []UserInfo) {
 //===================================================================
 
 // GlobalCorrection Глобальная корректировка.
-func (connection *IrbisConnection) GlobalCorrection(settings *GblSettings) (result []string) {
+func (connection *Connection) GlobalCorrection(settings *GblSettings) (result []string) {
 	if !connection.Connected {
 		return
 	}
@@ -520,7 +507,7 @@ func (connection *IrbisConnection) GlobalCorrection(settings *GblSettings) (resu
 //===================================================================
 
 // ListDatabases Получение списка баз данных с сервера.
-func (connection *IrbisConnection) ListDatabases(specification string) (result []DatabaseInfo) {
+func (connection *Connection) ListDatabases(specification string) (result []DatabaseInfo) {
 	if !connection.Connected {
 		return
 	}
@@ -541,7 +528,7 @@ func (connection *IrbisConnection) ListDatabases(specification string) (result [
 //===================================================================
 
 // ListFiles Получение списка файлов на сервере.
-func (connection *IrbisConnection) ListFiles(specifications ...string) (result []string) {
+func (connection *Connection) ListFiles(specifications ...string) (result []string) {
 	if !connection.Connected {
 		return
 	}
@@ -572,7 +559,7 @@ func (connection *IrbisConnection) ListFiles(specifications ...string) (result [
 //===================================================================
 
 // ListProcesses Получение списка серверных процессов
-func (connection *IrbisConnection) ListProcesses() (result []ProcessInfo) {
+func (connection *Connection) ListProcesses() (result []ProcessInfo) {
 	if !connection.Connected {
 		return
 	}
@@ -591,7 +578,7 @@ func (connection *IrbisConnection) ListProcesses() (result []ProcessInfo) {
 //===================================================================
 
 // ListTerms Получение списка терминов с указанным префиксом.
-func (connection *IrbisConnection) ListTerms(prefix string) (result []string) {
+func (connection *Connection) ListTerms(prefix string) (result []string) {
 	if !connection.Connected {
 		return
 	}
@@ -628,7 +615,7 @@ func (connection *IrbisConnection) ListTerms(prefix string) (result []string) {
 
 // NoOp Пустая операция. Используется для периодического
 // подтверждения подключения клиента.
-func (connection *IrbisConnection) NoOp() bool {
+func (connection *Connection) NoOp() bool {
 	if !connection.Connected {
 		return false
 	}
@@ -642,7 +629,7 @@ func (connection *IrbisConnection) NoOp() bool {
 //===================================================================
 
 // ParseConnectionString Разбор строки подключения.
-func (connection *IrbisConnection) ParseConnectionString(connectionString string) {
+func (connection *Connection) ParseConnectionString(connectionString string) {
 	items := strings.Split(connectionString, ";")
 	for _, item := range items {
 		if len(item) == 0 {
@@ -685,7 +672,7 @@ func (connection *IrbisConnection) ParseConnectionString(connectionString string
 
 //===================================================================
 
-func (connection *IrbisConnection) PrintTable(definition *TableDefinition) (result string) {
+func (connection *Connection) PrintTable(definition *TableDefinition) (result string) {
 	if !connection.Connected {
 		return
 	}
@@ -713,7 +700,7 @@ func (connection *IrbisConnection) PrintTable(definition *TableDefinition) (resu
 //===================================================================
 
 // ReadBinaryFile Чтение двоичного файла с сервера.
-func (connection *IrbisConnection) ReadBinaryFile(specification string) []byte {
+func (connection *Connection) ReadBinaryFile(specification string) []byte {
 	if !connection.Connected {
 		return nil
 	}
@@ -726,7 +713,7 @@ func (connection *IrbisConnection) ReadBinaryFile(specification string) []byte {
 //===================================================================
 
 // ReadIniFile Чтение INI-файла с сервера.
-func (connection *IrbisConnection) ReadIniFile(specification string) *IniFile {
+func (connection *Connection) ReadIniFile(specification string) *IniFile {
 	if !connection.Connected {
 		return nil
 	}
@@ -745,7 +732,7 @@ func (connection *IrbisConnection) ReadIniFile(specification string) *IniFile {
 //===================================================================
 
 // ReadMenuFile Чтение MNU-файла с сервера.
-func (connection *IrbisConnection) ReadMenuFile(specification string) *MenuFile {
+func (connection *Connection) ReadMenuFile(specification string) *MenuFile {
 	if !connection.Connected {
 		return nil
 	}
@@ -764,7 +751,7 @@ func (connection *IrbisConnection) ReadMenuFile(specification string) *MenuFile 
 //===================================================================
 
 // ReadOptFile Чтение OPT-файла с сервера.
-func (connection *IrbisConnection) ReadOptFile(specification string) (result *OptFile) {
+func (connection *Connection) ReadOptFile(specification string) (result *OptFile) {
 	lines := connection.ReadTextLines(specification)
 	if len(lines) == 0 {
 		return
@@ -779,7 +766,7 @@ func (connection *IrbisConnection) ReadOptFile(specification string) (result *Op
 //===================================================================
 
 // ReadParFile Чтение PAR-файла с сервера
-func (connection *IrbisConnection) ReadParFile(specification string) (result *ParFile) {
+func (connection *Connection) ReadParFile(specification string) (result *ParFile) {
 	lines := connection.ReadTextLines(specification)
 	if len(lines) == 0 {
 		return
@@ -793,7 +780,7 @@ func (connection *IrbisConnection) ReadParFile(specification string) (result *Pa
 //===================================================================
 
 // ReadPostings Считывание постингов из поискового индекса.
-func (connection *IrbisConnection) ReadPostings(parameters *PostingParameters) (result []TermPosting) {
+func (connection *Connection) ReadPostings(parameters *PostingParameters) (result []TermPosting) {
 	if !connection.Connected {
 		return
 	}
@@ -827,7 +814,7 @@ func (connection *IrbisConnection) ReadPostings(parameters *PostingParameters) (
 //===================================================================
 
 // ReadRawRecord Чтение указанной записи в "сыром" виде.
-func (connection *IrbisConnection) ReadRawRecord(mfn int) *RawRecord {
+func (connection *Connection) ReadRawRecord(mfn int) *RawRecord {
 	if !connection.Connected {
 		return nil
 	}
@@ -851,7 +838,7 @@ func (connection *IrbisConnection) ReadRawRecord(mfn int) *RawRecord {
 //===================================================================
 
 // ReadRecord Чтение записи по ее MFN.
-func (connection *IrbisConnection) ReadRecord(mfn int) *MarcRecord {
+func (connection *Connection) ReadRecord(mfn int) *MarcRecord {
 	if !connection.Connected {
 		return nil
 	}
@@ -875,7 +862,7 @@ func (connection *IrbisConnection) ReadRecord(mfn int) *MarcRecord {
 //===================================================================
 
 // ReadRecordVersion Чтение указанной версии записи.
-func (connection *IrbisConnection) ReadRecordVersion(mfn, version int) *MarcRecord {
+func (connection *Connection) ReadRecordVersion(mfn, version int) *MarcRecord {
 	if !connection.Connected {
 		return nil
 	}
@@ -900,7 +887,7 @@ func (connection *IrbisConnection) ReadRecordVersion(mfn, version int) *MarcReco
 //===================================================================
 
 // ReadRecords Чтение с сервера нескольких записей.
-func (connection *IrbisConnection) ReadRecords(mfnList []int) (result []MarcRecord) {
+func (connection *Connection) ReadRecords(mfnList []int) (result []MarcRecord) {
 	if !connection.Connected || len(mfnList) == 0 {
 		return
 	}
@@ -949,7 +936,7 @@ func (connection *IrbisConnection) ReadRecords(mfnList []int) (result []MarcReco
 //===================================================================
 
 // ReadSearchScenario Загрузка сценариев поиска с сервера.
-func (connection *IrbisConnection) ReadSearchScenario(specification string) (result []SearchScenario) {
+func (connection *Connection) ReadSearchScenario(specification string) (result []SearchScenario) {
 	ini := connection.ReadIniFile(specification)
 	if ini == nil || len(ini.Sections) == 0 {
 		return
@@ -962,7 +949,7 @@ func (connection *IrbisConnection) ReadSearchScenario(specification string) (res
 //===================================================================
 
 // ReadTerms Простое получение терминов поискового словаря.
-func (connection *IrbisConnection) ReadTerms(startTerm string, number int) []TermInfo {
+func (connection *Connection) ReadTerms(startTerm string, number int) []TermInfo {
 	parameters := TermParameters{StartTerm: startTerm, NumberOfTerms: number}
 	return connection.ReadTermsEx(&parameters)
 }
@@ -970,7 +957,7 @@ func (connection *IrbisConnection) ReadTerms(startTerm string, number int) []Ter
 //===================================================================
 
 // ReadTermsEx Получение терминов поискового словаря.
-func (connection *IrbisConnection) ReadTermsEx(parameters *TermParameters) (result []TermInfo) {
+func (connection *Connection) ReadTermsEx(parameters *TermParameters) (result []TermInfo) {
 	if !connection.Connected {
 		return
 	}
@@ -1001,7 +988,7 @@ func (connection *IrbisConnection) ReadTermsEx(parameters *TermParameters) (resu
 //===================================================================
 
 // ReadTextFile Чтение текстового файла с сервера.
-func (connection *IrbisConnection) ReadTextFile(specification string) string {
+func (connection *Connection) ReadTextFile(specification string) string {
 	if !connection.Connected {
 		return ""
 	}
@@ -1022,7 +1009,7 @@ func (connection *IrbisConnection) ReadTextFile(specification string) string {
 //===================================================================
 
 // ReadTextLines Чтение текстового файла в виде слайса строк.
-func (connection *IrbisConnection) ReadTextLines(specification string) []string {
+func (connection *Connection) ReadTextLines(specification string) []string {
 	if !connection.Connected {
 		return []string{}
 	}
@@ -1043,7 +1030,7 @@ func (connection *IrbisConnection) ReadTextLines(specification string) []string 
 //===================================================================
 
 // ReadTreeFile Чтение TRE-файла с сервера.
-func (connection *IrbisConnection) ReadTreeFile(specification string) (result *TreeFile) {
+func (connection *Connection) ReadTreeFile(specification string) (result *TreeFile) {
 	lines := connection.ReadTextLines(specification)
 	if len(lines) == 0 {
 		return
@@ -1057,28 +1044,28 @@ func (connection *IrbisConnection) ReadTreeFile(specification string) (result *T
 //===================================================================
 
 // ReloadDictionary Пересоздание словаря для указанной базы данных.
-func (connection *IrbisConnection) ReloadDictionary(database string) (result bool) {
+func (connection *Connection) ReloadDictionary(database string) (result bool) {
 	return connection.ExecuteAnyCommand("Y", database)
 }
 
 //===================================================================
 
 // ReloadMasterFile Пересоздание мастер-файла для указанной базы данных.
-func (connection *IrbisConnection) ReloadMasterFile(database string) (result bool) {
+func (connection *Connection) ReloadMasterFile(database string) (result bool) {
 	return connection.ExecuteAnyCommand("X", database)
 }
 
 //===================================================================
 
 // RestartServer Перезапуск сервера (без утери подключенных клиентов).
-func (connection *IrbisConnection) RestartServer() (result bool) {
+func (connection *Connection) RestartServer() (result bool) {
 	return connection.ExecuteAnyCommand("+8")
 }
 
 //===================================================================
 
 // Search Простой поиск записей (возвращается не более 32 тыс. записей).
-func (connection *IrbisConnection) Search(expression string) []int {
+func (connection *Connection) Search(expression string) []int {
 	if !connection.Connected {
 		return []int{}
 	}
@@ -1102,7 +1089,7 @@ func (connection *IrbisConnection) Search(expression string) []int {
 //===================================================================
 
 // SearchAll Поиск всех записей (даже если их окажется больше 32 тыс.).
-func (connection *IrbisConnection) SearchAll(expression string) (result []int) {
+func (connection *Connection) SearchAll(expression string) (result []int) {
 	if !connection.Connected {
 		return
 	}
@@ -1155,7 +1142,7 @@ func (connection *IrbisConnection) SearchAll(expression string) (result []int) {
 
 // SearchCount Определение количества записей, соответствующих
 // поисковому выражению.
-func (connection *IrbisConnection) SearchCount(expression string) int {
+func (connection *Connection) SearchCount(expression string) int {
 	if !connection.Connected {
 		return 0
 	}
@@ -1177,7 +1164,7 @@ func (connection *IrbisConnection) SearchCount(expression string) int {
 //===================================================================
 
 // SearchEx Расширенный поиск записей.
-func (connection *IrbisConnection) SearchEx(parameters *SearchParameters) []FoundLine {
+func (connection *Connection) SearchEx(parameters *SearchParameters) []FoundLine {
 	if !connection.Connected {
 		return []FoundLine{}
 	}
@@ -1206,7 +1193,7 @@ func (connection *IrbisConnection) SearchEx(parameters *SearchParameters) []Foun
 //===================================================================
 
 // SearchRead Поиск записей с их одновременным считыванием.
-func (connection *IrbisConnection) SearchRead(expression string, limit int) (result []MarcRecord) {
+func (connection *Connection) SearchRead(expression string, limit int) (result []MarcRecord) {
 	if !connection.Connected {
 		return
 	}
@@ -1237,7 +1224,7 @@ func (connection *IrbisConnection) SearchRead(expression string, limit int) (res
 // SearchSingleRecord Поиск и считывание одной записи, соответствующей выражение.
 // Если таких записей больше одной, то будет считана любая из них.
 // Если таких записей нет, будет возвращен nil.
-func (connection *IrbisConnection) SearchSingleRecord(expression string) *MarcRecord {
+func (connection *Connection) SearchSingleRecord(expression string) *MarcRecord {
 	found := connection.SearchRead(expression, 1)
 	if len(found) != 0 {
 		return &found[0]
@@ -1250,7 +1237,7 @@ func (connection *IrbisConnection) SearchSingleRecord(expression string) *MarcRe
 
 // ToConnectionString Выдача строки подключения для текущего соеденения
 // (соединение не обязательно должно быть установлено).
-func (connection *IrbisConnection) ToConnectionString() string {
+func (connection *Connection) ToConnectionString() string {
 	return "host=" + connection.Host +
 		";port=" + strconv.Itoa(connection.Port) +
 		";username=" + connection.Username +
@@ -1263,14 +1250,14 @@ func (connection *IrbisConnection) ToConnectionString() string {
 //===================================================================
 
 // TruncateDatabase Опустошение указанной базы данных.
-func (connection *IrbisConnection) TruncateDatabase(database string) bool {
+func (connection *Connection) TruncateDatabase(database string) bool {
 	return connection.ExecuteAnyCommand("S", database)
 }
 
 //===================================================================
 
 // UndeleteRecord Восстановление записи по ее MFN.
-func (connection *IrbisConnection) UndeleteRecord(mfn int) *MarcRecord {
+func (connection *Connection) UndeleteRecord(mfn int) *MarcRecord {
 	if !connection.Connected {
 		return nil
 	}
@@ -1293,14 +1280,14 @@ func (connection *IrbisConnection) UndeleteRecord(mfn int) *MarcRecord {
 //===================================================================
 
 // UnlockDatabase Разблокирование указанной базы данных.
-func (connection *IrbisConnection) UnlockDatabase(database string) bool {
+func (connection *Connection) UnlockDatabase(database string) bool {
 	return connection.ExecuteAnyCommand("U", database)
 }
 
 //===================================================================
 
 // UnlockRecords Разблокирование перечисленных записей.
-func (connection *IrbisConnection) UnlockRecords(database string,
+func (connection *Connection) UnlockRecords(database string,
 	mfnList []int) bool {
 	if !connection.Connected {
 		return false
@@ -1325,7 +1312,7 @@ func (connection *IrbisConnection) UnlockRecords(database string,
 
 // UpdateIniFile Обновление строк серверного INI-файла
 // для текущего пользователя.
-func (connection *IrbisConnection) UpdateIniFile(lines []string) bool {
+func (connection *Connection) UpdateIniFile(lines []string) bool {
 	if !connection.Connected {
 		return false
 	}
@@ -1346,14 +1333,14 @@ func (connection *IrbisConnection) UpdateIniFile(lines []string) bool {
 //===================================================================
 
 // UpdateUserList Обновление списка пользователей на сервере.
-func (connection *IrbisConnection) UpdateUserList(users []UserInfo) {
+func (connection *Connection) UpdateUserList(users []UserInfo) {
 	// TODO implement
 }
 
 //===================================================================
 
 // WriteRawRecord Сохранение на сервере "сырой" записи.
-func (connection *IrbisConnection) WriteRawRecord(record *RawRecord) int {
+func (connection *Connection) WriteRawRecord(record *RawRecord) int {
 	if !connection.Connected {
 		return 0
 	}
@@ -1375,7 +1362,7 @@ func (connection *IrbisConnection) WriteRawRecord(record *RawRecord) int {
 //===================================================================
 
 // WriteRecord Сохранение записи на сервере.
-func (connection *IrbisConnection) WriteRecord(record *MarcRecord) int {
+func (connection *Connection) WriteRecord(record *MarcRecord) int {
 	if !connection.Connected {
 		return 0
 	}
@@ -1407,7 +1394,7 @@ func (connection *IrbisConnection) WriteRecord(record *MarcRecord) int {
 
 // WriteRecords Сохранение нескольких записей на сервере
 // (могут относиться к разным базам).
-func (connection *IrbisConnection) WriteRecords(records []MarcRecord) bool {
+func (connection *Connection) WriteRecords(records []MarcRecord) bool {
 	if !connection.Connected || len(records) == 0 {
 		return false
 	}
@@ -1451,7 +1438,7 @@ func (connection *IrbisConnection) WriteRecords(records []MarcRecord) bool {
 //===================================================================
 
 // WriteTextFile Сохранение текстового файла на сервере.
-func (connection *IrbisConnection) WriteTextFile(specification, text string) bool {
+func (connection *Connection) WriteTextFile(specification, text string) bool {
 	if !connection.Connected {
 		return false
 	}
