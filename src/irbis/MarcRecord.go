@@ -177,6 +177,15 @@ func (record *MarcRecord) IsDeleted() bool {
 	return (record.Status & 3) != 0
 }
 
+// Reset сбрасывает состояние записи, отвязывая её от базы данных.
+// Поля при этом остаются нетронутыми.
+func (record *MarcRecord) Reset() {
+	record.Mfn = 0
+	record.Status = 0
+	record.Version = 0
+	record.Database = ""
+}
+
 // String Выдает текстовое представление записи.
 func (record *MarcRecord) String() string {
 	return record.Encode("\n")

@@ -21,7 +21,7 @@ func main() {
 	println("Интервал:", connection.Interval)
 
 	// Из INI-файла можно получить настройки клиента
-	ini := connection.IniFile
+	ini := connection.Ini
 	dbnnamecat := ini.GetValue("Main", "DBNNAMECAT", "???")
 	println("DBNNAMECAT:", dbnnamecat)
 

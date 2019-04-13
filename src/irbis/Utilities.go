@@ -7,8 +7,9 @@ import (
 	"unicode"
 )
 
-const IrbisDelimiter = "\x1F\x1E"
-const ShortDelimiter = "\x1E"
+const FullDelimiter = "\x1F\x1E"
+const FirstDelimiter = "\x1F"
+const SecondDelimiter = "\x1E"
 
 func contains(s []int, item int) bool {
 	for _, one := range s {
@@ -120,22 +121,22 @@ func prepareFormat(text string) string {
 }
 
 func DosToIrbis(text string) string {
-	return strings.ReplaceAll(text, "\n", IrbisDelimiter)
+	return strings.ReplaceAll(text, "\n", FullDelimiter)
 }
 
 func IrbisToDos(text string) string {
-	return strings.ReplaceAll(text, IrbisDelimiter, "\n")
+	return strings.ReplaceAll(text, FullDelimiter, "\n")
 }
 
 func IrbisToLines(text string) []string {
-	return strings.Split(text, IrbisDelimiter)
+	return strings.Split(text, FullDelimiter)
 }
 
 func LinesToIrbis(lines []string) string {
 	result := strings.Builder{}
 	for _, line := range lines {
 		result.WriteString(line)
-		result.WriteString(IrbisDelimiter)
+		result.WriteString(FullDelimiter)
 	}
 
 	return result.String()

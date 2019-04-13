@@ -13,7 +13,7 @@ Currently supported Go 1.12 on 64-bit Windows and Linux
 ```go
 package main
 
-import "../src/irbis"
+import "./src/irbis"
 
 func main ()  {
 	// Connect to the server
@@ -34,7 +34,7 @@ func main ()  {
 	println("Interval:", connection.Interval)
 
 	// Proposed client settings from INI-file
-	ini := connection.IniFile
+	ini := connection.Ini
 	dbnnamecat := ini.GetValue("Main", "DBNNAMECAT", "???")
 	println("DBNNAMECAT:", dbnnamecat)
 

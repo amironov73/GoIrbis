@@ -8,7 +8,7 @@ import (
 
 /*
 	Простая программа, удаляющая из базы данных RQST все выполненные заказы
-    (для уменьшения нагрузки на сеть и сервер).
+    (для уменьшения нагрузки на сеть и сервер со стороны АРМ "Книговыдачи").
 */
 
 func main() {
@@ -46,9 +46,8 @@ func main() {
 	println("Good records loaded:", len(goodRecords))
 	for i := range goodRecords {
 		record := &goodRecords[i]
-                record.Mfn = 0
-		record.Version = 0
-		record.Mfn = 0
+		record.Reset()
+		record.Database = connection.Database
 	}
 
 	connection.TruncateDatabase(connection.Database)

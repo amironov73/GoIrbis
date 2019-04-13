@@ -19,7 +19,7 @@ type DatabaseInfo struct {
 }
 
 func parseLine(line string) (result []int) {
-	items := strings.Split(line, ShortDelimiter)
+	items := strings.Split(line, SecondDelimiter)
 	for _, item := range items {
 		value, err := strconv.Atoi(item)
 		if err == nil {

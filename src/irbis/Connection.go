@@ -301,7 +301,7 @@ func (connection *Connection) FormatRecord(format string, record *MarcRecord) st
 	}
 
 	query.Add(-2).NewLine()
-	query.AddUtf(record.Encode(IrbisDelimiter))
+	query.AddUtf(record.Encode(FullDelimiter))
 	response := connection.Execute(query)
 	if response == nil || !response.CheckReturnCode() {
 		return ""
@@ -462,11 +462,11 @@ func (connection *Connection) GlobalCorrection(settings *GblSettings) (result []
 	} else {
 		var encoded strings.Builder
 		encoded.WriteString("!0")
-		encoded.WriteString(IrbisDelimiter)
+		encoded.WriteString(FullDelimiter)
 		for _, statement := range settings.Statements {
-			encoded.WriteString(statement.Encode(IrbisDelimiter))
+			encoded.WriteString(statement.Encode(FullDelimiter))
 		}
-		encoded.WriteString(IrbisDelimiter)
+		encoded.WriteString(FullDelimiter)
 		query.AddUtf(encoded.String()).NewLine()
 	}
 
@@ -923,7 +923,7 @@ func (connection *Connection) ReadRecords(mfnList []int) (result []MarcRecord) {
 		if len(parts) != 2 {
 			continue
 		}
-		parts = strings.Split(parts[1], "\x1F")[1:]
+		parts = strings.Split(parts[1], FirstDelimiter)[1:]
 		record := NewMarcRecord()
 		record.Decode(lines)
 		record.Database = connection.Database
@@ -1208,7 +1208,7 @@ func (connection *Connection) SearchRead(expression string, limit int) (result [
 	}
 
 	for _, item := range found {
-		lines := strings.Split(item.Description, "\x1F")
+		lines := strings.Split(item.Description, FirstDelimiter)
 		lines = lines[1:]
 		record := MarcRecord{}
 		record.Decode(lines)
@@ -1372,7 +1372,7 @@ func (connection *Connection) WriteRecord(record *MarcRecord) int {
 	query.AddAnsi(database).NewLine()
 	query.Add(0).NewLine()
 	query.Add(1).NewLine()
-	query.AddUtf(record.Encode(IrbisDelimiter)).NewLine()
+	query.AddUtf(record.Encode(FullDelimiter)).NewLine()
 	response := connection.Execute(query)
 	if response == nil || !response.CheckReturnCode() {
 		return 0
@@ -1382,7 +1382,7 @@ func (connection *Connection) WriteRecord(record *MarcRecord) int {
 	temp := response.ReadRemainingUtfLines()
 	if len(temp) != 0 {
 		record.Clear()
-		lines := append([]string{temp[0]}, strings.Split(temp[1], ShortDelimiter)...)
+		lines := append([]string{temp[0]}, strings.Split(temp[1], SecondDelimiter)...)
 		record.Decode(lines)
 		record.Database = connection.Database
 	}
@@ -1410,8 +1410,8 @@ func (connection *Connection) WriteRecords(records []MarcRecord) bool {
 		record := &records[i]
 		database := PickOne(record.Database, connection.Database)
 		query.AddUtf(database)
-		query.AddUtf(IrbisDelimiter)
-		query.AddUtf(record.Encode(IrbisDelimiter))
+		query.AddUtf(FullDelimiter)
+		query.AddUtf(record.Encode(FullDelimiter))
 		query.NewLine()
 	}
 
