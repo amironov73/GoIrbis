@@ -107,7 +107,7 @@ func (record *MarcRecord) FSM(tag int, code rune) string {
 	return ""
 }
 
-// FMA Получение слайса полей с указанной меткой.
+// FMA Получение слайса со значениями полей с указанной меткой.
 func (record *MarcRecord) FMA(tag int) (result []string) {
 	for _, field := range record.Fields {
 		if field.Tag == tag && field.Value != "" {
@@ -118,8 +118,9 @@ func (record *MarcRecord) FMA(tag int) (result []string) {
 	return
 }
 
-// FSMA Получение слайса подполей с указанным кодом
-// в полях с указанной меткой.
+// FSMA Получение слайса со значениями подполей с указанными
+// меткой и кодом. Если подполя не найдены, возвращается
+// слайс нулевой длины.
 func (record *MarcRecord) FSMA(tag int, code rune) (result []string) {
 	for _, field := range record.Fields {
 		if field.Tag == tag {
@@ -134,7 +135,7 @@ func (record *MarcRecord) FSMA(tag int, code rune) (result []string) {
 	return
 }
 
-// GetField Получение поля с указанной меткой с учетом повторения.
+// GetField Получение указанного повторения поля с указанной меткой.
 // Если поле не найдено, возвращается nil.
 func (record *MarcRecord) GetField(tag, occurrence int) *RecordField {
 	for _, field := range record.Fields {

@@ -32,12 +32,13 @@ func (field *RecordField) Add(code rune, value string) *RecordField {
 }
 
 // Clear Очищает поле (удаляет значение и все подполя).
+// Метка поля остаётся нетронутой.
 func (field *RecordField) Clear() *RecordField {
 	field.Subfields = []*SubField{}
 	return field
 }
 
-// DecodeBody декодирует только текст поля.
+// DecodeBody декодирует только текст поля и подполей (без метки).
 func (field *RecordField) DecodeBody(body string) {
 	all := strings.Split(body, "^")
 	if body[0] != '^' {
@@ -53,7 +54,8 @@ func (field *RecordField) DecodeBody(body string) {
 	}
 }
 
-// Decode Декодирование поля из протокольного представления.
+// Decode Декодирование поля из протокольного представления
+// (метка, значение и подполя).
 func (field *RecordField) Decode(text string) {
 	parts := strings.SplitN(text, "#", 2)
 	field.Tag, _ = strconv.Atoi(parts[0])
@@ -61,11 +63,24 @@ func (field *RecordField) Decode(text string) {
 	field.DecodeBody(body)
 }
 
-// Encode Кодирование поля в протокольное представление.
+// Encode Кодирование поля в протокольное представление
+// (метка, значение и подполя).
 func (field *RecordField) Encode() string {
 	result := strings.Builder{}
 	result.WriteString(strconv.Itoa(field.Tag))
 	result.WriteRune('#')
+	result.WriteString(field.Value)
+	for _, subfield := range field.Subfields {
+		result.WriteString(subfield.String())
+	}
+
+	return result.String()
+}
+
+// EncodeBody Кодирование поля в протокольное представление
+// (только значение и подполя).
+func (field *RecordField) EncodeBody() string {
+	result := strings.Builder{}
 	result.WriteString(field.Value)
 	for _, subfield := range field.Subfields {
 		result.WriteString(subfield.String())

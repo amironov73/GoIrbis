@@ -4,12 +4,15 @@ const (
 
 	// Статус записи
 
-	LOGICALLY_DELETED  = 1  // Запись логически удалена
-	PHYSICALLY_DELETED = 2  // Запись физически удалена
-	ABSENT             = 4  // Запись отсутствует
-	NON_ACTUALIZED     = 8  // Запись не актуализирована
-	LAST_VERSION       = 32 // Последняя версия записи
-	LOCKED_RECORD      = 64 // Запись заблокирована на ввод
+	LOGICALLY_DELETED       = 1   // Запись логически удалена
+	PHYSICALLY_DELETED      = 2   // Запись физически удалена
+	ABSENT                  = 4   // Запись отсутствует
+	NON_ACTUALIZED          = 8   // Запись не актуализирована
+	NEW_RECORD              = 16  // Первый экземпляр записи
+	LAST_VERSION            = 32  // Последняя версия записи
+	LOCKED_RECORD           = 64  // Запись заблокирована на ввод
+	AUTOIN_ERROR            = 128 // Ошибка в Autoin.gbl
+	FULLTEXT_NOT_ACTUALIZED = 256 // Полный текст не актуализирован
 
 	// Распространённые форматы
 
