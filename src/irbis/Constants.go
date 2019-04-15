@@ -48,6 +48,7 @@ const (
 	CIRCULATION   = "B" // Книговыдача
 	BOOKLAND      = "B" // Книговыдача
 	PROVISITON    = "K" // Книгообеспеченность
+	JAVA_APPLET   = "J" // Java апплет
 
 	// Команды глобальной корректировки
 
