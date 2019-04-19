@@ -27,7 +27,14 @@ func NewRecordField(tag int, value string) *RecordField {
 func (field *RecordField) Add(code rune, value string) *RecordField {
 	subfield := NewSubField(code, value)
 	field.Subfields = append(field.Subfields, subfield)
+	return field
+}
 
+// AddNonEmpty добавляет подполе, при условии, что его значение не пустое.
+func (field *RecordField) AddNonEmpty(code rune, value string) *RecordField {
+	if len(value) != 0 {
+		field.Add(code, value)
+	}
 	return field
 }
 
@@ -36,6 +43,18 @@ func (field *RecordField) Add(code rune, value string) *RecordField {
 func (field *RecordField) Clear() *RecordField {
 	field.Subfields = []*SubField{}
 	return field
+}
+
+// Clone клонирует поле со всеми подполями.
+func (field *RecordField) Clone() *RecordField {
+	result := new(RecordField)
+	result.Tag = field.Tag
+	result.Value = strings.Repeat(field.Value, 1)
+	result.Subfields = make([]*SubField, len(field.Subfields))
+	for i := range field.Subfields {
+		result.Subfields[i] = field.Subfields[i].Clone()
+	}
+	return result
 }
 
 // DecodeBody декодирует только текст поля и подполей (без метки).
@@ -111,6 +130,81 @@ func (field *RecordField) GetFirstSubFieldValue(code rune) string {
 	}
 
 	return ""
+}
+
+// GetValueOrFirstSubField Выдаёт значение для ^*.
+func (field *RecordField) GetValueOrFirstSubField() string {
+	result := field.Value
+	if len(result) == 0 && len(field.Subfields) != 0 {
+		result = field.Subfields[0].Value
+	}
+	return result
+}
+
+// HaveSubField выясняет, есть ли подполе с указанным кодом.
+func (field *RecordField) HaveSubField(code rune) bool {
+	for _, candidate := range field.Subfields {
+		if SameRune(candidate.Code, code) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// InsertAt вставляет подполе в указанную позицию.
+func (field *RecordField) InsertAt(i int, code rune, value string) *RecordField {
+	s := field.Subfields
+	s = append(s, nil)
+	copy(s[i+1:], s[i:])
+	s[i] = NewSubField(code, value)
+	field.Subfields = s
+	return field
+}
+
+// RemoveAt удаляет подполе в указанной позиции.
+func (field *RecordField) RemoveAt(i int) *RecordField {
+	s := field.Subfields
+	field.Subfields = s[:i+copy(s[i:], s[i+1:])]
+	return field
+}
+
+// RemoveSubfield удаляет все подполя с указанным кодом.
+func (field *RecordField) RemoveSubfield(code rune) *RecordField {
+	for i := 0; i < len(field.Subfields); {
+		sf := field.Subfields[i]
+		if SameRune(sf.Code, code) {
+			field.RemoveAt(i)
+		} else {
+			i++
+		}
+	}
+	return field
+}
+
+// ReplaceSubfield заменяет значение  подполя.
+func (field *RecordField) ReplaceSubfield(code rune, oldValue, newValue string) *RecordField {
+	for _, subfield := range field.Subfields {
+		if SameRune(subfield.Code, code) &&
+			SameString(subfield.Value, oldValue) {
+			subfield.Value = newValue
+		}
+	}
+	return field
+}
+
+// SetSubfield устанавливает значение первого повторения подполя с указанным кодом. Если value==nil, подполе удаляется.
+func (field *RecordField) SetSubfield(code rune, value string) *RecordField {
+	if len(value) == 0 {
+		field.RemoveSubfield(code)
+	} else {
+		subfield := field.GetFirstSubField(code)
+		if subfield == nil {
+			subfield = NewSubField(code, value)
+		}
+		subfield.Value = value
+	}
+	return field
 }
 
 // String Выдает текстовое представление поля со всеми его подполями.

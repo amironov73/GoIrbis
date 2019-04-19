@@ -37,9 +37,31 @@ func (record *MarcRecord) Add(tag int, value string) *RecordField {
 	return field
 }
 
+// AddNonEmpty добавляет в запись непустое поле.
+func (record *MarcRecord) AddNonEmpty(tag int, value string) *MarcRecord {
+	if len(value) != 0 {
+		record.Add(tag, value)
+	}
+	return record
+}
+
 // Clear Очистка записи (удаление всех полей).
 func (record *MarcRecord) Clear() {
 	record.Fields = []*RecordField{}
+}
+
+// Clone клонирует запись со всеми полями.
+func (record *MarcRecord) Clone() *MarcRecord {
+	result := new(MarcRecord)
+	result.Database = record.Database
+	result.Mfn = record.Mfn
+	result.Version = record.Version
+	result.Status = record.Status
+	result.Fields = make([]*RecordField, len(record.Fields))
+	for i := range record.Fields {
+		result.Fields[i] = record.Fields[i].Clone()
+	}
+	return result
 }
 
 // Decode Декодирование записи из протокольного представления.
@@ -173,9 +195,50 @@ func (record *MarcRecord) GetFirstField(tag int) *RecordField {
 	return nil
 }
 
+// HaveField выясняет, есть ли в записи поле с указанной меткой.
+func (record *MarcRecord) HaveField(tag int) bool {
+	for _, field := range record.Fields {
+		if field.Tag == tag {
+			return true
+		}
+	}
+	return false
+}
+
+// InsertAt вставляет поле в указанную позицию.
+func (record *MarcRecord) InsertAt(i int, tag int, value string) *RecordField {
+	s := record.Fields
+	s = append(s, nil)
+	copy(s[i+1:], s[i:])
+	field := NewRecordField(tag, value)
+	s[i] = field
+	record.Fields = s
+	return field
+}
+
 // IsDeleted Запись удалена?
 func (record *MarcRecord) IsDeleted() bool {
 	return (record.Status & 3) != 0
+}
+
+// RemoveAt удаляет поле в указанной позиции.
+func (record *MarcRecord) RemoveAt(i int) *MarcRecord {
+	s := record.Fields
+	record.Fields = s[:i+copy(s[i:], s[i+1:])]
+	return record
+}
+
+// RemoveField удаляет все поля с указанной меткой.
+func (record *MarcRecord) RemoveField(tag int) *MarcRecord {
+	for i := 0; i < len(record.Fields); {
+		field := record.Fields[i]
+		if field.Tag == tag {
+			record.RemoveAt(i)
+		} else {
+			i++
+		}
+	}
+	return record
 }
 
 // Reset сбрасывает состояние записи, отвязывая её от базы данных.
@@ -185,6 +248,29 @@ func (record *MarcRecord) Reset() {
 	record.Status = 0
 	record.Version = 0
 	record.Database = ""
+}
+
+// SetField устанавливает значение первого повторения поля
+// с указанной меткой. Если такого поля нет, оно создаётся.
+func (record *MarcRecord) SetField(tag int, value string) *MarcRecord {
+	field := record.GetFirstField(tag)
+	if field == nil {
+		field = NewRecordField(tag, value)
+	}
+	field.Value = value
+	return record
+}
+
+// SetSubfield устанавливает значение подполя первого повторения
+// поля с указанной меткой. Если необходимые поля или подполе
+// отсутствуют, они создаются.
+func (record *MarcRecord) SetSubfield(tag int, code rune, value string) *MarcRecord {
+	field := record.GetFirstField(tag)
+	if field == nil {
+		field = NewRecordField(tag, "")
+	}
+	field.SetSubfield(code, value)
+	return record
 }
 
 // String Выдает текстовое представление записи.

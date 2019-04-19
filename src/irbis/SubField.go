@@ -1,5 +1,7 @@
 package irbis
 
+import "strings"
+
 // SubField Подполе записи. Состоит из кода и значения.
 type SubField struct {
 	// Code Код подполя
@@ -13,6 +15,14 @@ type SubField struct {
 // с указанными кодом и значением.
 func NewSubField(code rune, value string) *SubField {
 	return &SubField{Code: code, Value: value}
+}
+
+// Clone клонирует подполе.
+func (subfield *SubField) Clone() *SubField {
+	result := new(SubField)
+	result.Code = subfield.Code
+	result.Value = strings.Repeat(subfield.Value, 1)
+	return result
 }
 
 // Decode Декодирование подполя из протокольного представления.

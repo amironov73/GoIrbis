@@ -141,6 +141,65 @@ func TestRecordField_GetFirstSubFieldValue_2(t *testing.T) {
 	}
 }
 
+func TestRecordField_InsertAt_1(t *testing.T) {
+	field := NewRecordField(200, "")
+	field.Add('a', "SubA")
+	field.Add('c', "SubC")
+	field.Add('d', "SubD")
+	field.InsertAt(1, 'b', "SubB")
+	if field.String() != "200#^aSubA^bSubB^cSubC^dSubD" {
+		t.FailNow()
+	}
+	field.InsertAt(1, 'b', "SubB")
+	if field.String() != "200#^aSubA^bSubB^bSubB^cSubC^dSubD" {
+		t.FailNow()
+	}
+}
+
+func TestRecordField_RemoveAt_1(t *testing.T) {
+	field := NewRecordField(200, "")
+	field.Add('a', "SubA")
+	field.Add('b', "SubB")
+	field.Add('c', "SubC")
+	field.Add('d', "SubD")
+	field.RemoveAt(1)
+	if field.String() != "200#^aSubA^cSubC^dSubD" {
+		t.FailNow()
+	}
+	field.RemoveAt(1)
+	if field.String() != "200#^aSubA^dSubD" {
+		t.FailNow()
+	}
+	field.RemoveAt(1)
+	if field.String() != "200#^aSubA" {
+		t.FailNow()
+	}
+	field.RemoveAt(0)
+	if field.String() != "200#" {
+		t.FailNow()
+	}
+}
+
+func TestRecordField_RemoveSubfield_1(t *testing.T) {
+	field := NewRecordField(200, "")
+	field.Add('a', "SubA")
+	field.Add('b', "SubB")
+	field.Add('c', "SubC")
+	field.Add('d', "SubD")
+	field.RemoveSubfield('B')
+	if field.String() != "200#^aSubA^cSubC^dSubD" {
+		t.FailNow()
+	}
+	field.RemoveSubfield('b')
+	if field.String() != "200#^aSubA^cSubC^dSubD" {
+		t.FailNow()
+	}
+	field.RemoveSubfield('a')
+	if field.String() != "200#^cSubC^dSubD" {
+		t.FailNow()
+	}
+}
+
 func TestRecordField_String_1(t *testing.T) {
 	field := NewRecordField(200, "")
 	field.Add('a', "Title")
