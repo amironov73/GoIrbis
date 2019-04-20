@@ -107,6 +107,8 @@ Subfields | []*Subfield | Слайс указателей на подполя.
 
 **func (field \*RecordField) EncodeBody() string** -- кодирует поле в протокольное представление (только значение и подполя).
 
+**func (field \*RecordField) GetEmbeddedFields() []\*RecordField** -- получает слайс встроенных полей из данного поля.
+
 **func (field \*RecordField) GetFirstSubField(code rune) \*SubField** -- возвращает первое вхождение подполя с указанным кодом или `nil`.
 
 **func (field \*RecordField) GetFirstSubFieldValue(code rune) string** -- возвращает значение первого вхождения подполя с указанным кодом или пустую строку.

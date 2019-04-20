@@ -108,6 +108,39 @@ func (field *RecordField) EncodeBody() string {
 	return result.String()
 }
 
+// GetEmbeddedFields получает слайс встроенных полей из данного поля.
+func (field *RecordField) GetEmbeddedFields() (result []*RecordField) {
+	var found *RecordField = nil
+	for _, one:=range field.Subfields {
+		if one.Code == '1' {
+			if found != nil {
+				if len(found.Subfields) != 0 || len(found.Value) != 0 {
+					result = append(result, found)
+				}
+			}
+			value := one.Value
+			if len(value) == 0 {
+				continue
+			}
+			tag, _ := strconv.Atoi(value[:3])
+			found = NewRecordField(tag, "")
+			if tag < 10 && len(value) > 3 {
+				found.Value = value[3:]
+			}
+		} else {
+			if found != nil {
+				found.Subfields = append(found.Subfields, one)
+			}
+		}
+	}
+	if found != nil {
+		if len(found.Subfields) != 0 || len(found.Value) != 0 {
+			result = append(result, found)
+		}
+	}
+	return
+}
+
 // GetFirstSubField Возвращает первое вхождение подполя с указанным кодом.
 // Если такого подполя нет, возвращается nil.
 func (field *RecordField) GetFirstSubField(code rune) *SubField {

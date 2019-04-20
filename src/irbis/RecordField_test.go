@@ -4,6 +4,29 @@ import (
 	"testing"
 )
 
+func getField1() *RecordField {
+	field := NewRecordField(461, "")
+	field.Add('1', "2001#").
+	Add('a', "Златая цепь").
+	Add('e', "Записки. Повести. Рассказы").
+	Add('f', "Бондарин С. А.").
+	Add('v', "С. 76-132")
+	return field
+}
+
+func getField2() *RecordField {
+	field := NewRecordField(461, "")
+	field.Add('1', "2001#").
+	Add('a', "Златая цепь").
+	Add('e', "Записки. Повести. Рассказы").
+	Add('f', "Бондарин С. А.").
+	Add('v', "С. 76-132").
+	Add('1', "200#1#").
+	Add('a', "Руслан и Людмила").
+	Add('f', "Пушкин А. С.")
+	return field
+}
+
 func TestNewRecordField_1(t *testing.T) {
 	tag := 200
 	value := "Value"
@@ -93,6 +116,66 @@ func TestRecordField_Encode_2(t *testing.T) {
 	field := NewRecordField(300, "Comment")
 	encoded := field.Encode()
 	if encoded != "300#Comment" {
+		t.FailNow()
+	}
+}
+
+func TestRecordField_GetEmbeddedFields_1(t *testing.T) {
+	field := NewRecordField(200, "")
+	embedded := field.GetEmbeddedFields()
+	if len(embedded) != 0 {
+		t.FailNow()
+	}
+}
+
+func TestRecordField_GetEmbeddedFields_2(t *testing.T) {
+	field:=getField1()
+	embedded:=field.GetEmbeddedFields()
+	if len(embedded) != 1 {
+		t.FailNow()
+	}
+	if embedded[0].Tag != 200 {
+		t.FailNow()
+	}
+	if len(embedded[0].Subfields) != 4 {
+		t.FailNow()
+	}
+	if embedded[0].Subfields[0].Code != 'a' {
+		t.FailNow()
+	}
+	if embedded[0].Subfields[0].Value != "Златая цепь" {
+		t.FailNow()
+	}
+}
+
+func TestRecordField_GetEmbeddedFields_3(t *testing.T) {
+	field:=getField2()
+	embedded:=field.GetEmbeddedFields()
+	if len(embedded) != 2 {
+		t.FailNow()
+	}
+	if embedded[0].Tag != 200 {
+		t.FailNow()
+	}
+	if len(embedded[0].Subfields) != 4 {
+		t.FailNow()
+	}
+	if embedded[0].Subfields[0].Code != 'a' {
+		t.FailNow()
+	}
+	if embedded[0].Subfields[0].Value != "Златая цепь" {
+		t.FailNow()
+	}
+	if embedded[1].Tag != 200 {
+		t.FailNow()
+	}
+	if len(embedded[1].Subfields) != 2 {
+		t.FailNow()
+	}
+	if embedded[1].Subfields[0].Code != 'a' {
+		t.FailNow()
+	}
+	if embedded[1].Subfields[0].Value != "Руслан и Людмила" {
 		t.FailNow()
 	}
 }
