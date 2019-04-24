@@ -6,7 +6,7 @@ import (
 )
 
 type ClientSocket interface {
-	TalkToServer(query *ClientQuery) *ServerResponse;
+	TalkToServer(query *ClientQuery) *ServerResponse
 }
 
 type Tcp4ClientSocket struct {
@@ -29,10 +29,12 @@ func (client *Tcp4ClientSocket) TalkToServer(query *ClientQuery) *ServerResponse
 
 	defer func() { _ = socket.Close() }()
 
-	buffer := query.Encode()
-	_, err = socket.Write(buffer)
-	if err != nil {
-		return nil
+	chunks := query.Encode()
+	for i := range chunks {
+		_, err = socket.Write(chunks[i])
+		if err != nil {
+			return nil
+		}
 	}
 
 	result := NewServerResponse(socket)

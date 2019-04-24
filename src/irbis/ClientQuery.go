@@ -1,19 +1,17 @@
 package irbis
 
 import (
-	"bytes"
 	"strconv"
 )
 
 // ClientQuery формирует клиентский запрос из запрашиваемых элементов (строк и их фрагментов).
 type ClientQuery struct {
-	buffer *bytes.Buffer
+	chunks [][]byte
 }
 
 // NewClientQuery формирует заголовок клиентского запроса.
 func NewClientQuery(connection *Connection, command string) *ClientQuery {
 	result := ClientQuery{}
-	result.buffer = bytes.NewBuffer(nil)
 	result.AddAnsi(command).NewLine()
 	result.AddAnsi(connection.Workstation).NewLine()
 	result.AddAnsi(command).NewLine()
@@ -35,7 +33,7 @@ func (query *ClientQuery) Add(value int) *ClientQuery {
 // AddAnsi добавляет в запрос строку в кодировке ANSI.
 func (query *ClientQuery) AddAnsi(text string) *ClientQuery {
 	buf := ToAnsi(text)
-	query.buffer.Write(buf)
+	query.chunks = append(query.chunks, buf)
 	return query
 }
 
@@ -63,23 +61,25 @@ func (query *ClientQuery) AddFormat(format string) bool {
 // AddUtf добавляет в запрос строку в кодировке UTF-8.
 func (query *ClientQuery) AddUtf(text string) *ClientQuery {
 	buf := toUtf8(text)
-	query.buffer.Write(buf)
+	query.chunks = append(query.chunks, buf)
 	return query
 }
 
 // Encode выдает сетевой пакет, который нужно отправить серверу.
-func (query *ClientQuery) Encode() []byte {
-	result := bytes.NewBuffer(nil)
-	length := query.buffer.Len()
+func (query *ClientQuery) Encode() [][]byte {
+	length := 0
+	for i := range query.chunks {
+		length += len(query.chunks[i])
+	}
 	prefix := strconv.Itoa(length) + "\n"
-	result.WriteString(prefix)
-	result.Write(query.buffer.Bytes())
+	result := [][]byte{toUtf8(prefix)}
+	result = append(result, query.chunks...)
 
-	return result.Bytes()
+	return result
 }
 
 // NewLine добавляет в запрос перевод строки (\n).
 func (query *ClientQuery) NewLine() *ClientQuery {
-	query.buffer.WriteByte(10)
+	query.chunks = append(query.chunks, []byte{10})
 	return query
 }
