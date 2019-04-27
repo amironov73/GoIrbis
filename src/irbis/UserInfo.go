@@ -2,16 +2,18 @@ package irbis
 
 import "strconv"
 
+// Информация о зарегистрированном пользователе системы
+// (по данным client_m.mnu).
 type UserInfo struct {
-	Number        string
-	Name          string
-	Password      string
-	Cataloger     string
-	Reader        string
-	Circulation   string
-	Acquisitions  string
-	Provision     string
-	Administrator string
+	Number        string // номер по порядку в списке.
+	Name          string // логин.
+	Password      string // пароль.
+	Cataloger     string // доступность АРМ "Каталогизатор".
+	Reader        string // доступность АРМ "Читатель".
+	Circulation   string // доступность АРМ "Книговыдача".
+	Acquisitions  string // доступность АРМ "Комплектатор".
+	Provision     string // доступность АРМ "Книгообеспеченность".
+	Administrator string // доступность АРМ "Администратор".
 }
 
 func formatPair(prefix, value, defaultValue string) string {
@@ -21,6 +23,7 @@ func formatPair(prefix, value, defaultValue string) string {
 	return prefix + "=" + value + ";"
 }
 
+// Encode формирует строковое представление пользователя.
 func (user *UserInfo) Encode() string {
 	return user.Name + "\r\n" +
 		user.Password + "\r\n" +
@@ -32,6 +35,7 @@ func (user *UserInfo) Encode() string {
 		formatPair("A", user.Administrator, "irbisa.ini")
 }
 
+// Разбор ответа сервера.
 func parseUsers(lines []string) (result []UserInfo) {
 	userCount, _ := strconv.Atoi(lines[0])
 	linesPerUser, _ := strconv.Atoi(lines[1])

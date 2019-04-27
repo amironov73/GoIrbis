@@ -1333,8 +1333,22 @@ func (connection *Connection) UpdateIniFile(lines []string) bool {
 //===================================================================
 
 // UpdateUserList Обновление списка пользователей на сервере.
-func (connection *Connection) UpdateUserList(users []UserInfo) {
-	// TODO implement
+func (connection *Connection) UpdateUserList(users []UserInfo) bool {
+	if !connection.Connected {
+		return false
+	}
+
+	if len(users) == 0 {
+		return true
+	}
+
+	query := NewClientQuery(connection, "+7")
+	for _, user := range users {
+		query.AddAnsi(user.Encode()).NewLine()
+	}
+	connection.Execute(query)
+
+	return true
 }
 
 //===================================================================

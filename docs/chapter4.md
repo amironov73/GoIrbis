@@ -34,7 +34,30 @@ TRE-файл -- древовидный справочник.
 
 #### UserInfo
 
-Информация о зарегистрированном пользователе системы (по данным `client_m.mnu`).
+Информация о зарегистрированном пользователе системы (по данным `client_m.mnu`). Состоит из полей:
+
+| Поле          | Назначение
+|---------------|-----------
+| Number        | Номер по порядку в списке.
+| Name          | Логин пользователя.
+| Password      | Пароль.
+| Cataloger     | Доступность АРМ "Каталогизатор".
+| Reader        | Доступность АРМ "Читатель".
+| Circulation   | Доступность АРМ "Книговыдача".
+| Acquisitions  | Доступность АРМ "Комплектатор".
+| Provision     | Доступность АРМ "Книгообеспеченность".
+| Administrator | Доступность АРМ "Администратор".
+
+Если строка доступа к АРМ пустая, то доступ к соответствующему АРМ запрещен.
+
+```go
+users := client.GetUserList()
+newUser := UserInfo{Name: "Tyler Durden",
+	Password: "Fight Club",
+    Cataloger: "INI\\TylerC.ini"}
+users = append(users, newUser)
+client.UpdateUserList(users)
+```
 
 #### TableDefinition
 
