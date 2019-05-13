@@ -7,7 +7,7 @@ import (
 )
 
 /*
-	Простая программа, удаляющая из базы данных RQST все выполненные заказы
+    Простая программа, удаляющая из базы данных RQST все выполненные заказы
     (для уменьшения нагрузки на сеть и сервер со стороны АРМ "Книговыдачи").
 */
 
@@ -15,7 +15,7 @@ func main() {
 	start := time.Now()
 
 	if len(os.Args) != 2 {
-		println("USAGE: RqstStart <connectionString>")
+		println("USAGE: RqstShrink <connectionString>")
 		return
 	}
 
