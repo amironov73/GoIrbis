@@ -39,6 +39,7 @@ func main() {
 	found := connection.SearchAll(expression)
 	if len(found) == maxMfn {
 		println("No truncation needed, exiting")
+     		return
 	}
 
 	// TODO ReadAllRecords
