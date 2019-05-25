@@ -474,7 +474,7 @@ func (connection *Connection) GlobalCorrection(settings *GblSettings) (result []
 	query.Add(settings.FirstRecord).NewLine()
 	query.Add(settings.NumberOfRecords).NewLine()
 
-	if len(settings.MfnList) != 0 {
+	if len(settings.MfnList) == 0 {
 		count := settings.MaxMfn - settings.MinMfn + 1
 		query.Add(count).NewLine()
 		for mfn := settings.MinMfn; mfn < settings.MaxMfn; mfn++ {
