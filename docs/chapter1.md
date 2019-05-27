@@ -122,7 +122,7 @@ func main() {
 	connection.Database = "SANDBOX"
 
 	for i:=0; i < 10; i++ {
-		// Создаём базу в памяти клиента
+		// Создаём запись в памяти клиента
 		record := irbis.NewMarcRecord()
 
 		// Наполняем ее полями: первый автор (поле с подполями),
