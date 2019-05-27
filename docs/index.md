@@ -1,4 +1,4 @@
-### Библиотека PhpIrbis
+### Библиотека GoIrbis
 
 * [**Глава 1. Общее описание**](chapter1.md)
 * [**Глава 2. Структура Connection**](chapter2.md)
