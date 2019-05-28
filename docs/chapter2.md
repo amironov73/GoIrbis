@@ -62,7 +62,7 @@ const PROVISITON    = "K" // Книгообеспеченность
 client := irbis.NewConnection()
 client.Host = "myhost.com"
 if !client.Connect() {
-	log.Fatal("Не удалось подключиться!")
+    log.Fatal("Не удалось подключиться!")
 }
 ```
 
@@ -89,7 +89,7 @@ formatMenuName := client.Ini.GetValue("Main", "FmtMnu", "FMT31.MNU")
 Проверить статус "клиент подключен или нет" можно с помощью поля `Connected`:
 
 ```go
-if client.Connected {
+if !client.Connected {
     // В настоящее время мы не подключены к серверу
 }
 ```
@@ -169,7 +169,7 @@ if !client.WriteRecords(records) {
 
 ```go
 mfn := 123
-client.deleteRecord(mfn)
+client.DeleteRecord(mfn)
 ```
 
 Восстановление записи:
@@ -188,7 +188,7 @@ println("Найдено записей:", len(found))
 
 Обратите внимание, что поисковый запрос заключен в дополнительные кавычки. Эти кавычки явлются элементом синтаксиса поисковых запросов ИРБИС64, и лучше их не опускать.
 
-Вышеприведённый запрос вернёт не более 32 тыс. найденных записей. Сервер ИРБИС64 за одно обращение к нему может выдать не более 32 тыс. записей. Чтобы получить все записи, используйте метод SearchAll (см. ниже), он выполнит столько обращений к серверу, сколько нужно.
+Вышеприведённый запрос вернёт не более 32 тыс. найденных записей. Сервер ИРБИС64 за одно обращение к нему может выдать не более 32 тыс. записей. Чтобы получить все записи, используйте метод `SearchAll` (см. ниже), он выполнит столько обращений к серверу, сколько нужно.
 
 Поиск с одновременной загрузкой записей:
 
@@ -222,7 +222,7 @@ parameters.Format = BRIEF_FORMAT
 parameters.NumberOfRecords = 5
 found := client.SearchEx(parameters)
 if len(found) == 0 {
-	println("Не нашли")
+    println("Не нашли")
 } else {
     // в found находится слайс структур FoundLine
     first := found[0]
@@ -321,12 +321,12 @@ ToConnectionString | Получение строки подключения
 Нижеперечисленные записи доступны лишь из АРМ "Администратор", поэтому подключаться к серверу необходимо так:
 
 ```go
-client = new IrbisConnection()
-client.Username = 'librarian'
-client.Password = 'secret'
+client := irbis.NewConnection()
+client.Username = "librarian"
+client.Password = "secret"
 client.Workstation = ADMINISTRATOR
 if !client.Connect() {
-	log.Fatal("Не удалось подключиться")
+    log.Fatal("Не удалось подключиться")
 }
 ```
 
@@ -355,12 +355,12 @@ UpdateUserList | Обновление списка пользователей н
 settings := new(GblSettings)
 settings.Database = "IBIS"
 settings.MfnList = []int{1, 2, 3}
-settings->statements = []GblStatement {
-  GblStatement{ADD_FIELD, "3000", "XXXXXXXXX", "'Hello'"}
+settings.statements = []GblStatement {
+    GblStatement{ADD_FIELD, "3000", "XXXXXXXXX", "'Hello'"}
 }
-result = connection.GlobalCorrection(settings)
+result := connection.GlobalCorrection(settings)
 for line := range result {
-	println(line)
+    println(line)
 }
 ```
 
