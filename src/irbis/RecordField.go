@@ -234,6 +234,7 @@ func (field *RecordField) SetSubfield(code rune, value string) *RecordField {
 		subfield := field.GetFirstSubField(code)
 		if subfield == nil {
 			subfield = NewSubField(code, value)
+			field.Subfields = append(field.Subfields, subfield)
 		}
 		subfield.Value = value
 	}
