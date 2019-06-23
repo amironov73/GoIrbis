@@ -402,7 +402,29 @@ func (connection *Connection) GetMaxMfn(database string) int {
 	}
 
 	return response.ReturnCode
-}
+} // GetMaxMfn
+
+//===================================================================
+
+// Get term postings for specified MFN and prefix
+func (connection *Connection) GetRecordPostings(mfn int, prefix string) (result []TermPosting) {
+	if !connection.Connected {
+		return
+	}
+
+	query := NewClientQuery(connection, "V")
+	query.AddAnsi(connection.Database).NewLine()
+	query.Add(mfn).NewLine()
+	query.AddUtf(prefix).NewLine()
+	response := connection.Execute(query)
+	if response == nil || !response.CheckReturnCode() {
+		return
+	}
+
+	lines := response.ReadRemainingUtfLines()
+	result = ParsePostings(lines)
+	return
+} // GetRecordPostings
 
 //===================================================================
 
