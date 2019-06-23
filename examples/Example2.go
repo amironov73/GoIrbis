@@ -14,7 +14,7 @@ func main() {
 	connection.Password = "secret"
 	if !connection.Connect() {
 		println("Не удалось подключиться")
-		return
+		connection.FailOnError()
 	}
 
 	// По выходу из функции произойдет отключение от сервера
@@ -23,7 +23,7 @@ func main() {
 	// Записи будут помещаться в базу SANDBOX
 	connection.Database = "SANDBOX"
 
-	for i:=0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		// Создаём базу в памяти клиента
 		record := irbis.NewMarcRecord()
 
@@ -35,8 +35,8 @@ func main() {
 
 		// заглавие (поле с подполями)
 		record.Add(200, "").
-			Add('a', "Работа с ИРБИС64: версия " +
-				strconv.Itoa(i) ).
+			Add('a', "Работа с ИРБИС64: версия "+
+				strconv.Itoa(i)).
 			Add('e', "руководство пользователя")
 
 		// выходные данные (поле с подполями)
@@ -56,4 +56,3 @@ func main() {
 		fmt.Println(record)
 	}
 }
-

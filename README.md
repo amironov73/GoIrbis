@@ -24,7 +24,7 @@ func main ()  {
 	connection.Password = "secret"
 	if !connection.Connect() {
 		println("Can't connect")
-		return
+		connection.FailOnError()
 	}
 
 	// Will be disconnected at exit

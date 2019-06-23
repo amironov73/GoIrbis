@@ -24,6 +24,7 @@ func (client *Tcp4ClientSocket) TalkToServer(query *ClientQuery) *ServerResponse
 	address := connection.Host + ":" + strconv.Itoa(connection.Port)
 	socket, err := net.Dial("tcp", address)
 	if err != nil {
+		connection.LastError = -100000
 		return nil
 	}
 

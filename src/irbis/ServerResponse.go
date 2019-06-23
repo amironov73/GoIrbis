@@ -16,6 +16,7 @@ type ServerResponse struct {
 	ReturnCode    int
 	ServerVersion string
 	reader        *bytes.Reader
+	connection    *Connection
 }
 
 func NewServerResponse(conn net.Conn) *ServerResponse {
@@ -76,6 +77,7 @@ func (response *ServerResponse) GetLine() []byte {
 
 func (response *ServerResponse) GetReturnCode() int {
 	response.ReturnCode = response.ReadInteger()
+	response.connection.LastError = response.ReturnCode
 	return response.ReturnCode
 }
 

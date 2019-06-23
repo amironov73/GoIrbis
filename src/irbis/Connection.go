@@ -52,6 +52,9 @@ type Connection struct {
 
 	// socket Сокет.
 	socket ClientSocket
+
+	// Last error code
+	LastError int
 }
 
 //===================================================================
@@ -237,7 +240,12 @@ func (connection *Connection) Disconnect() bool {
 // Execute Отправка клиентского запроса на сервер
 // и получение ответа от него.
 func (connection *Connection) Execute(query *ClientQuery) *ServerResponse {
-	return connection.socket.TalkToServer(query)
+	connection.LastError = 0
+	result := connection.socket.TalkToServer(query)
+	if result != nil {
+		result.connection = connection
+	}
+	return result
 }
 
 //===================================================================
@@ -260,6 +268,16 @@ func (connection *Connection) ExecuteAnyCommand(command string, params ...string
 	}
 
 	return true
+}
+
+//===================================================================
+
+// FailOnError Завершение программы с ошибкой,
+// если код возврата последней операции меньше нуля.
+func (connection *Connection) FailOnError() {
+	if connection.LastError < 0 {
+		log.Fatal(DescribeError(connection.LastError))
+	}
 }
 
 //===================================================================

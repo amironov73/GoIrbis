@@ -10,7 +10,7 @@ func main() {
 	connection.Password = "secret"
 	if !connection.Connect() {
 		println("Не удалось подключиться")
-		return
+		connection.FailOnError()
 	}
 
 	// По выходу из функции произойдет отключение от сервера
