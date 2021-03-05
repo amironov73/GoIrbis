@@ -60,8 +60,4 @@ func main ()  {
 
 #### Documentation (in russian)
 
-* [**Общее описание**](docs/chapter1.md)
-* [**Структура Connection**](docs/chapter2.md)
-* [**Структуры MarcRecord, RecordField и SubField**](docs/chapter3.md)
-* [**Прочие (вспомогательные) структуры и функции**](docs/chapter4.md)
-
+[![Badge](https://readthedocs.org/projects/goirbis/badge/)](https://goirbis.readthedocs.io/)

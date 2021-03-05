@@ -2,12 +2,18 @@ version: 0.0.1.{build}
 platform: x64
 image: Visual Studio 2017
 
+environment:
+  PATH: C:\go112\bin;C:\Python37-x64;C:\Python37-x64\Scripts;%PATH%
+
 init:
   - git config --global core.autocrlf true
 
 install:
+  - python -m pip install --upgrade pip
+  - pip install --upgrade pygount sphinx sphinx_rtd_theme
   - go version
   - go env
+  - pygount -f summary src/irbis -s go
 
 build_script:
   - compile.cmd

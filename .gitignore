@@ -19,3 +19,6 @@ bin/
 
 # Go packages
 pkg/
+
+# Sphinx documentation
+docs/_build/
