@@ -1,0 +1,8 @@
+{
+    "token": "001.1.2:3",
+    "host": "localhost",
+    "port": 6666,
+    "database": "IBIS",
+    "user": "librarian",
+    "password": "secret"
+}
