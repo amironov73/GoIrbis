@@ -16,7 +16,8 @@ install:
   - pygount -f summary src/irbis -s go
 
 build_script:
-  - compile.cmd
+  - go build -v -o bin/SafeExperiments.exe   src/SafeExperiments.go
+  - go build -v -o bin/DirectExperiments.exe src/DirectExperiments.go
 
 test: off
 
